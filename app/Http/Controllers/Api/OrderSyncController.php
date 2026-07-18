@@ -12,20 +12,13 @@ use Illuminate\Support\Facades\Validator;
 class OrderSyncController extends Controller
 {
     /**
-     * Synchronize bulk orders from the offline-first client.
+     * Synchronize bulk orders from the offline-first cashier client.
      */
     public function sync(Request $request)
     {
         $user = $request->user();
 
-        // 1. Ensure the user belongs to a store
-        if (!$user->store_id) {
-            return response()->json([
-                'error' => 'Unauthorized. This user is not assigned to a physical store.'
-            ], 403);
-        }
-
-        // 2. Validate the incoming array payload
+        // 1. Validate the incoming array payload
         $validator = Validator::make($request->all(), [
             'orders' => 'required|array',
             'orders.*.uuid' => 'required|uuid',
@@ -57,7 +50,7 @@ class OrderSyncController extends Controller
         $syncedUuids = [];
         $failedUuids = [];
 
-        // 3. Process each order securely inside a Database Transaction
+        // 2. Process each order securely inside a Database Transaction
         foreach ($request->orders as $orderData) {
             DB::beginTransaction();
             try {
@@ -69,10 +62,9 @@ class OrderSyncController extends Controller
                     continue;
                 }
 
-                // Create the core Order
+                // Create the core Order (Completely store_id free!)
                 $order = Order::create([
                     'uuid' => $orderData['uuid'],
-                    'store_id' => $user->store_id,
                     'user_id' => $user->id,
                     'sequence_number' => $orderData['sequence_number'],
                     'subtotal_excl_vat' => $orderData['subtotal_excl_vat'],

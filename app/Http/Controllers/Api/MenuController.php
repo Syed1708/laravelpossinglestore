@@ -13,20 +13,11 @@ class MenuController extends Controller
      */
     public function index(Request $request)
     {
-        $user = $request->user();
 
-        if (!$user->store_id) {
-            return response()->json([
-                'error' => 'User is not assigned to a store.'
-            ], 403);
-        }
-
-        // Fetch categories and only eager load active products
-        $menu = Category::where('store_id', $user->store_id)
-            ->with(['products' => function ($query) {
-                $query->where('is_active', true);
-            }])
-            ->get();
+       // Simple: return all categories and their active products (no store_id checks!)
+        $menu = Category::with(['products' => function ($query) {
+            $query->where('is_active', true);
+        }])->get();
 
         return response()->json($menu);
     }
