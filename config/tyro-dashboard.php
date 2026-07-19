@@ -330,6 +330,39 @@ return [
             ],
         ],
 
+                // 🚀 4. Z-Reports Archiving Resource (View-only for everyone!)
+        'daily_closures' => [
+            'model' => 'App\Models\DailyClosure',
+            'title' => 'Z-Reports (Clôtures)',
+            
+            'roles' => ['admin', 'super-admin'],
+            'readonly' => ['admin', 'super-admin'], 
+            
+            'icon' => '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 13.5h3.86a2.25 2.25 0 012.008 1.24l.885 1.77a2.25 2.25 0 002.007 1.24h1.98a2.25 2.25 0 002.007-1.24l.885-1.77a2.25 2.25 0 012.007-1.24h3.86m-18 0h18m-18 0V5.25A2.25 2.25 0 014.25 3h15.5A2.25 2.25 0 0122 5.25V13.5m-19.5 0v6.75A2.25 2.25 0 004.75 22.5h14.5a2.25 2.25 0 002.25-2.25V13.5M9 9h6M9 12h6" /></svg>',
+            'fields' => [
+                'z_number' => [
+                    'type' => 'text', 
+                    'label' => 'Numéro de Clôture (Z)',
+                ],
+                'total_ttc' => [
+                    'type' => 'number', 
+                    'label' => 'Total TTC (€)',
+                ],
+                'total_ht' => [
+                    'type' => 'number', 
+                    'label' => 'Total HT (€)',
+                ],
+                'total_tva' => [
+                    'type' => 'number', 
+                    'label' => 'Total TVA (€)',
+                ],
+                'closed_at' => [
+                    'type' => 'datetime', 
+                    'label' => 'Date de Clôture',
+                ],
+            ],
+        ],
+
 
     ],
     // 'resources' => [

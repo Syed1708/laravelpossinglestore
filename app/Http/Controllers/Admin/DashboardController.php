@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
@@ -11,12 +12,13 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        // Define Today bounds
+        $user = auth()->user();
+        $isAdmin = $user->hasRole('super-admin') || $user->hasRole('admin');
+
         $todayStart = Carbon::today()->startOfDay();
         $todayEnd = Carbon::today()->endOfDay();
 
-        // 1. Calculate HT / TVA / TTC Totals
-        // (Automatically scoped to the logged-in user's store_id!)
+        // 1. Calculate Core Totals
         $totals = Order::whereBetween('completed_at', [$todayStart, $todayEnd])
             ->selectRaw('
                 COALESCE(SUM(total_incl_vat), 0) as total_ttc,
@@ -33,7 +35,7 @@ class DashboardController extends Controller
             ->groupBy('payments.method')
             ->get();
 
-        // 3. Calculate VAT Breakdown per French bracket (5.5%, 10%, 20%)
+        // 3. Calculate VAT Breakdown per French bracket
         $vatBreakdown = DB::table('order_items')
             ->join('orders', 'order_items.order_id', '=', 'orders.id')
             ->whereBetween('orders.completed_at', [$todayStart, $todayEnd])
@@ -47,8 +49,7 @@ class DashboardController extends Controller
             ->get();
 
         // 4. Get the 10 most recent synced orders
-        $recentOrders = Order::with(['user', 'store'])
-            ->orderBy('completed_at', 'desc')
+        $recentOrders = Order::orderBy('completed_at', 'desc')
             ->limit(10)
             ->get();
 
@@ -57,6 +58,7 @@ class DashboardController extends Controller
             'payments' => $payments,
             'vatBreakdown' => $vatBreakdown,
             'recentOrders' => $recentOrders,
+            'isAdmin' => $isAdmin,
         ]);
     }
 }
