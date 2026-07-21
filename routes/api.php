@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\MenuController;
 use App\Http\Controllers\Api\OrderSyncController;
+use App\Http\Controllers\Api\StripeController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -16,5 +17,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/orders/sync', [OrderSyncController::class, 'sync']);
 
     Route::get('/menu', [MenuController::class, 'index']);
+    // Stripe Terminal Token provider
+    Route::post('/stripe/connection-token', [StripeController::class, 'getConnectionToken']);
 
 });
+
