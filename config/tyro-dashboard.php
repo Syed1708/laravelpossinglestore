@@ -330,40 +330,141 @@ return [
             ],
         ],
 
-                // 🚀 4. Z-Reports Archiving Resource (View-only for everyone!)
+        // 🚀 4. Z-Reports Archiving Resource (View-only for everyone!)
         'daily_closures' => [
             'model' => 'App\Models\DailyClosure',
             'title' => 'Z-Reports (Clôtures)',
-            
+
             'roles' => ['admin', 'super-admin'],
-            'readonly' => ['admin', 'super-admin'], 
-            
+            'readonly' => ['admin', 'super-admin'],
+
             'icon' => '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 13.5h3.86a2.25 2.25 0 012.008 1.24l.885 1.77a2.25 2.25 0 002.007 1.24h1.98a2.25 2.25 0 002.007-1.24l.885-1.77a2.25 2.25 0 012.007-1.24h3.86m-18 0h18m-18 0V5.25A2.25 2.25 0 014.25 3h15.5A2.25 2.25 0 0122 5.25V13.5m-19.5 0v6.75A2.25 2.25 0 004.75 22.5h14.5a2.25 2.25 0 002.25-2.25V13.5M9 9h6M9 12h6" /></svg>',
             'fields' => [
                 'z_number' => [
-                    'type' => 'text', 
+                    'type' => 'text',
                     'label' => 'Numéro de Clôture (Z)',
                 ],
                 'total_ttc' => [
-                    'type' => 'number', 
+                    'type' => 'number',
                     'label' => 'Total TTC (€)',
                 ],
                 'total_ht' => [
-                    'type' => 'number', 
+                    'type' => 'number',
                     'label' => 'Total HT (€)',
                 ],
                 'total_tva' => [
-                    'type' => 'number', 
+                    'type' => 'number',
                     'label' => 'Total TVA (€)',
                 ],
                 'closed_at' => [
-                    'type' => 'datetime', 
+                    'type' => 'datetime',
                     'label' => 'Date de Clôture',
                 ],
             ],
         ],
 
-        
+        // 🚀 NEW: Suppliers Resource (Module 3)
+        'suppliers' => [
+            'model' => 'App\Models\Supplier',
+            'title' => 'Fournisseurs',
+            'roles' => ['admin', 'super-admin'],
+            'icon' => '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" /></svg>',
+            'fields' => [
+                'name' => ['type' => 'text', 'label' => 'Nom du Fournisseur', 'rules' => 'required|max:255'],
+                'address' => ['type' => 'textarea', 'label' => 'Adresse', 'rules' => 'nullable|max:255'],
+                'contact_name' => ['type' => 'text', 'label' => 'Nom du Contact', 'rules' => 'nullable|max:255'],
+                'email' => ['type' => 'text', 'label' => 'Adresse Email', 'rules' => 'nullable|email'],
+                'phone' => ['type' => 'text', 'label' => 'Numéro de Téléphone', 'rules' => 'nullable|max:50'],
+            ]
+        ],
+
+        'ingredients' => [
+            'model' => 'App\Models\Ingredient',
+            'title' => 'Ingrédients (Stocks)',
+            'roles' => ['admin', 'super-admin'], // Restrict access to admins only
+            'icon' => '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.83m-3.703 3.75l-5.877-5.83a2.652 2.652 0 00-3.75 3.75l5.877 5.83m3.703-3.75V11.42m0 3.75H11.42m3.75-3.75V5.62c0-1.034-.84-1.874-1.874-1.874H5.62A1.874 1.874 0 003.75 5.62v6.18c0 1.034.84 1.874 1.874 1.874h6.18c1.034 0 1.874-.84 1.874-1.874V11.42z" /></svg>',
+            'fields' => [
+                'name' => [
+                    'type' => 'select',
+                    'label' => 'Nom de l\'ingrédient',
+                    'options' => [
+                        // Boulangerie
+                        'Pain Burger (Bun)' => '🍞 Pain Burger (Bun)',
+                        'Pain Brioché' => '🍞 Pain Brioché',
+                        'Galette Tortilla' => '🌯 Galette Tortilla',
+
+                        // Boucherie / Viandes
+                        'Steack Haché de Bœuf' => '🥩 Steack Haché de Bœuf',
+                        'Filet de Poulet' => '🍗 Filet de Poulet',
+                        'Tranches de Bacon' => '🥓 Tranches de Bacon',
+                        'Knacki / Saucisse' => '🌭 Knacki / Saucisse',
+                        'Poisson Pané' => '🐟 Poisson Pané (Fish)',
+
+                        // Fromages / Crèmerie
+                        'Cheddar Tranche' => '🧀 Cheddar Tranche',
+                        'Emmental Tranche' => '🧀 Emmental Tranche',
+                        'Mozzarella Tranche' => '🧀 Mozzarella Tranche',
+                        'Chèvre Tranche' => '🧀 Chèvre Tranche',
+
+                        // Légumes / Frais
+                        'Pomme de terre (Frites)' => '🥔 Pomme de terre (Frites)',
+                        'Salade Verte' => '🥬 Salade Verte',
+                        'Rondelles de Tomate' => '🍅 Rondelles de Tomate',
+                        'Rondelles d\'Oignon' => '🧅 Rondelles d\'Oignon',
+                        'Cornichons (Pickles)' => '🥒 Cornichons (Pickles)',
+                        'Avocat Frais' => '🥑 Avocat Frais',
+
+                        // Boissons
+                        'Canette Coca-Cola 33cl' => '🥤 Canette Coca-Cola 33cl',
+                        'Canette Sprite 33cl' => '🥤 Canette Sprite 33cl',
+                        'Canette Fanta 33cl' => '🥤 Canette Fanta 33cl',
+                        'Bouteille Eau Evian 50cl' => '💧 Bouteille Eau Evian 50cl',
+
+                        // Sauces & Divers
+                        'Huile de friture' => '🛢️ Huile de friture (Litres)',
+                        'Sel' => '🧂 Sel (Grammes)',
+                        'Poivre' => '🧂 Poivre (Grammes)',
+                        'Sauce Ketchup' => '🥫 Sauce Ketchup',
+                        'Sauce Mayonnaise' => '🥫 Sauce Mayonnaise',
+                        'Sauce BBQ' => '🥫 Sauce BBQ',
+                    ],
+                    'rules' => 'required'
+                ],
+
+                // 🚀 NEW: Relational dropdown linking your raw ingredients to their primary suppliers!
+                'primary_supplier_id' => [
+                    'type' => 'select',
+                    'label' => 'Fournisseur Principal (Supplier)',
+                    'relationship' => 'supplier', // References the belongsTo method in Ingredient.php
+                    'option_label' => 'name',       // Display supplier name in the dropdown
+                    'rules' => 'nullable',
+                ],
+
+                'stock_level' => [
+                    'type' => 'number',
+                    'label' => 'Niveau de Stock Actuel',
+                    'rules' => 'required|numeric|min:0'
+                ],
+                'alert_level' => [
+                    'type' => 'number',
+                    'label' => 'Stock d\'Alerte (Seuil)',
+                    'rules' => 'required|numeric|min:0'
+                ],
+                'unit' => [
+                    'type' => 'select',
+                    'label' => 'Unité de Mesure',
+                    'options' => [
+                        'unit' => 'Unité (Pièce)',
+                        'g' => 'Grammes (g)',
+                        'kg' => 'Kilogrammes (kg)',
+                        'cl' => 'Centilitres (cl)',
+                        'l' => 'Litres (l)',
+                    ],
+                    'rules' => 'required'
+                ],
+            ]
+        ],
+
 
 
     ],

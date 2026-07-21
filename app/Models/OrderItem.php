@@ -16,7 +16,23 @@ class OrderItem extends Model
         'vat_rate',
         'subtotal',
     ];
+    protected static function booted(): void
+    {
+        // 🚀 THE AUTOMATIC STOCK DEDUCTION ENGINE:
+        // Whenever a synced ticket saves an item, automatically subtract ingredients from stock!
+        static::created(function ($orderItem) {
+            if ($orderItem->product_id) {
+                // Find all recipe ingredients mapped to this product
+                $recipes = \App\Models\Recipe::where('product_id', $orderItem->product_id)->get();
 
+                foreach ($recipes as $recipe) {
+                    // Deduct stock: quantity_sold * recipe_quantity
+                    \App\Models\Ingredient::where('id', $recipe->ingredient_id)
+                        ->decrement('stock_level', $orderItem->quantity * $recipe->quantity);
+                }
+            }
+        });
+    }
     protected $casts = [
         'unit_price' => 'decimal:2',
         'vat_rate' => 'decimal:2',

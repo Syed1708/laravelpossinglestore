@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\Admin\DailyClosureController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\RecipeController;
 use App\Http\Controllers\Admin\ReportController;
 
 Route::get('/', function () {
@@ -29,4 +30,13 @@ Route::middleware(['web', 'auth'])->group(function () {
     
     // PDF generator route
     Route::get('/admin/reports/pdf', [ReportController::class, 'downloadPdf'])->name('admin.reports.pdf');
+});
+
+
+Route::middleware(['web', 'auth'])->group(function () {
+    // Custom Recipe Builder routes
+    Route::get('/admin/recipes', [RecipeController::class, 'index'])->name('admin.recipes.index');
+    Route::get('/admin/recipes/{product}', [RecipeController::class, 'show'])->name('admin.recipes.show');
+    Route::post('/admin/recipes/{product}/ingredients', [RecipeController::class, 'store'])->name('admin.recipes.store');
+    Route::delete('/admin/recipes/{product}/ingredients/{recipe}', [RecipeController::class, 'destroy'])->name('admin.recipes.destroy');
 });
