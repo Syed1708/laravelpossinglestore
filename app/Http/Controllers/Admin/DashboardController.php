@@ -18,22 +18,26 @@ class DashboardController extends Controller
         $user = auth()->user();
         $isAdmin = $user->hasRole('super-admin') || $user->hasRole('admin');
 
-        // 1. Determine active filter type (default: today)
-        $filterType = $request->input('filter_type', 'today');
+          // 🚀 THE FIX: Default to 'month' instead of 'today'
+        $filterType = $request->input('filter_type', 'month');
 
-        if ($filterType === 'month') {
-            $startDate = Carbon::now()->startOfMonth();
-            $endDate = Carbon::now()->endOfMonth();
+        if ($filterType === 'today') {
+            $startDate = Carbon::today()->startOfDay();
+            $endDate = Carbon::today()->endOfDay();
+        } elseif ($filterType === 'week') {
+            // 🚀 NEW: Weekly filter bounds (Monday to Sunday)
+            $startDate = Carbon::now()->startOfWeek();
+            $endDate = Carbon::now()->endOfWeek();
         } elseif ($filterType === 'custom' && $request->has('start_date') && $request->has('end_date')) {
             $startDate = Carbon::parse($request->input('start_date'))->startOfDay();
             $endDate = Carbon::parse($request->input('end_date'))->endOfDay();
         } else {
-            $filterType = 'today';
-            $startDate = Carbon::today()->startOfDay();
-            $endDate = Carbon::today()->endOfDay();
+            $filterType = 'month';
+            $startDate = Carbon::now()->startOfMonth();
+            $endDate = Carbon::now()->endOfMonth();
         }
 
-        // 2. Calculate Revenue (HT & TTC) for Selected Period
+        // 1. Calculate Revenue (HT & TTC)
         $revenue = Order::whereBetween('completed_at', [$startDate, $endDate])
             ->selectRaw('
                 COALESCE(SUM(total_incl_vat), 0) as total_ttc,
@@ -42,20 +46,20 @@ class DashboardController extends Controller
             ')
             ->first();
 
-        // 3. Calculate Cost of Goods Sold (COGS - Food Cost) for Selected Period
+        // 2. Calculate Cost of Goods Sold (COGS - Food Cost)
         $foodCost = Expense::where('category', 'food_cost')
             ->whereBetween('created_at', [$startDate, $endDate])
             ->sum('amount');
 
-        // 4. Calculate Operating Expenses (OPEX) for Selected Period
+        // 3. Calculate Operating Expenses (OPEX)
         $operatingCost = Expense::where('category', '!=', 'food_cost')
             ->whereBetween('created_at', [$startDate, $endDate])
             ->sum('amount');
 
-        // 5. Calculate Net Profit
+        // 4. Calculate Net Profit
         $netProfit = $revenue->total_ht - ($foodCost + $operatingCost);
 
-        // 6. Get the 10 most recent synced orders in this period
+        // 5. Get recent synced orders inside selected date range
         $recentOrders = Order::whereBetween('completed_at', [$startDate, $endDate])
             ->orderBy('completed_at', 'desc')
             ->limit(10)

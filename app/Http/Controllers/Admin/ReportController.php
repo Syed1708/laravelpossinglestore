@@ -3,11 +3,12 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Expense;
 use App\Models\Order;
+use App\Models\PurchaseOrder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
-use Barryvdh\DomPDF\Facade\Pdf;
 
 class ReportController extends Controller
 {
@@ -25,7 +26,7 @@ class ReportController extends Controller
 
         // Tyro admin role check
         $user = auth()->user();
-        $isAdmin = $user->hasRole('superadmin') || $user->hasRole('admin');
+        $isAdmin = $user->hasRole('super-admin') || $user->hasRole('admin');
 
         return view('admin.reports.index', array_merge($data, [
             'startDate' => $startDate->format('Y-m-d'),
@@ -34,24 +35,28 @@ class ReportController extends Controller
         ]));
     }
 
-    /**
-     * Generate and stream a clean, downloadable PDF report.
+
+     /**
+     * Generate and stream a clean, specialized PDF report.
      */
     public function downloadPdf(Request $request)
     {
         $startDate = Carbon::parse($request->input('start_date'))->startOfDay();
         $endDate = Carbon::parse($request->input('end_date'))->endOfDay();
+        
+        // 🚀 Get the requested report type (sales, purchases, expenses, p_and_l)
+        $reportType = $request->input('report_type', 'p_and_l');
 
         $data = $this->calculateReportData($startDate, $endDate);
 
-        // 🚀 THE MAGIC: Load a clean print-ready blade view, and convert to PDF!
+        // Compile the PDF using our unified template
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.reports.pdf', array_merge($data, [
             'startDate' => $startDate->format('d/m/Y'),
             'endDate' => $endDate->format('d/m/Y'),
+            'reportType' => $reportType
         ]));
 
-        // Downloads the file instantly as "rapport-ventes-bordeaux.pdf"
-        return $pdf->download("rapport-ventes-{$startDate->format('Ymd')}-{$endDate->format('Ymd')}.pdf");
+        return $pdf->download("rapport-{$reportType}-{$startDate->format('Ymd')}-{$endDate->format('Ymd')}.pdf");
     }
 
     /**
@@ -59,7 +64,7 @@ class ReportController extends Controller
      */
     private function calculateReportData($startDate, $endDate)
     {
-        // HT/TVA/TTC Totals
+        // 1. HT/TVA/TTC Totals
         $totals = Order::whereBetween('completed_at', [$startDate, $endDate])
             ->selectRaw('
                 COALESCE(SUM(total_incl_vat), 0) as total_ttc,
@@ -69,7 +74,7 @@ class ReportController extends Controller
             ')
             ->first();
 
-        // Payment Methods Breakdown
+        // 2. Payment Methods Breakdown
         $payments = DB::table('payments')
             ->join('orders', 'payments.order_id', '=', 'orders.id')
             ->whereBetween('orders.completed_at', [$startDate, $endDate])
@@ -77,7 +82,7 @@ class ReportController extends Controller
             ->groupBy('payments.method')
             ->get();
 
-        // VAT Collected per French tax bracket
+        // 3. VAT Breakdown per French tax bracket
         $vatBreakdown = DB::table('order_items')
             ->join('orders', 'order_items.order_id', '=', 'orders.id')
             ->whereBetween('orders.completed_at', [$startDate, $endDate])
@@ -90,10 +95,40 @@ class ReportController extends Controller
             ->orderBy('order_items.vat_rate', 'asc')
             ->get();
 
+        // 🚀 4. NEW: Top-Selling Products (Volume analysis for Sales Report)
+        $topProducts = DB::table('order_items')
+            ->join('orders', 'order_items.order_id', '=', 'orders.id')
+            ->whereBetween('orders.completed_at', [$startDate, $endDate])
+            ->select('order_items.product_name', DB::raw('SUM(order_items.quantity) as qty_sold'), DB::raw('SUM(order_items.subtotal) as total_ttc'))
+            ->groupBy('order_items.product_name')
+            ->orderBy('qty_sold', 'desc')
+            ->get();
+
+        // 🚀 5. NEW: Received Purchase Orders (For Purchases Report)
+        $purchasesList = PurchaseOrder::with(['supplier', 'items.ingredient'])
+            ->where('status', 'received')
+            ->whereBetween('received_at', [$startDate, $endDate])
+            ->get();
+
+        $totalPurchasesCost = $purchasesList->sum('total_cost');
+
+        // 🚀 6. NEW: Operating Expenses (For Expenses Report)
+        $expensesList = Expense::where('category', '!=', 'food_cost')
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $totalExpensesCost = $expensesList->sum('amount');
+
         return [
             'totals' => $totals,
             'payments' => $payments,
             'vatBreakdown' => $vatBreakdown,
+            'topProducts' => $topProducts,
+            'purchasesList' => $purchasesList,
+            'totalPurchasesCost' => $totalPurchasesCost,
+            'expensesList' => $expensesList,
+            'totalExpensesCost' => $totalExpensesCost,
         ];
     }
 }

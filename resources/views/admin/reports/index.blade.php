@@ -7,6 +7,60 @@
 <span>Rapports (PDF)</span>
 @endsection
 
+@push('styles')
+<!-- 🚀 CUSTOM STYLE OVERRIDES: Forces raw inputs to perfectly match Tyro's theme -->
+<style>
+    .pos-filter-form .form-group {
+        display: flex;
+        flex-direction: column;
+        margin-bottom: 0;
+    }
+    
+    .pos-filter-form .form-control {
+        display: block;
+        width: 100%;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.875rem;
+        line-height: 1.25rem;
+        color: var(--foreground, #1a202c);
+        background-color: var(--background, #fff);
+        border: 1px solid var(--border, #e2e8f0);
+        border-radius: 6px;
+        transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+        height: 38px; /* Standard Tyro input height */
+        box-sizing: border-box;
+    }
+
+    .pos-filter-form .form-control:focus {
+        border-color: var(--primary, #3182ce);
+        outline: 0;
+        box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.15);
+    }
+
+    /* Custom SVG Dropdown Arrow to replace browser defaults */
+    .pos-filter-form select.form-control {
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+        background-position: right 0.75rem center;
+        background-repeat: no-repeat;
+        background-size: 1.2em 1.2em;
+        padding-right: 2.5rem;
+    }
+
+    /* Standard height alignment for the filter button */
+    .pos-filter-form .btn {
+        height: 38px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        margin-bottom: 0;
+    }
+</style>
+@endpush
+
 @section('content')
 <div class="page-header">
     <div class="page-header-row">
@@ -17,27 +71,40 @@
     </div>
 </div>
 
-<!-- 1. DATE FILTER FORM CARD -->
+<!-- 1. DATE FILTER & REPORT SELECTION FORM CARD -->
 <div class="card" style="margin-bottom: 2rem;">
-    <div class="card-body">
-        <form action="{{ route('admin.reports.index') }}" method="GET" style="display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap;">
+    <div class="card-body" style="padding: 1.25rem;">
+        <form action="{{ route('admin.reports.index') }}" method="GET" class="pos-filter-form" style="display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap; width: 100%;">
             
-            <div style="flex: 1; min-width: 200px;">
-                <label class="form-label" style="font-weight: bold; margin-bottom: 5px; display: block;">Date de Début</label>
+            <!-- Start Date -->
+            <div class="form-group" style="flex: 1; min-width: 150px;">
+                <label class="form-label" style="font-weight: bold; margin-bottom: 5px; display: block; color: var(--foreground);">Date de Début</label>
                 <input type="date" name="start_date" value="{{ $startDate }}" class="form-control">
             </div>
 
-            <div style="flex: 1; min-width: 200px;">
-                <label class="form-label" style="font-weight: bold; margin-bottom: 5px; display: block;">Date de Fin</label>
+            <!-- End Date -->
+            <div class="form-group" style="flex: 1; min-width: 150px;">
+                <label class="form-label" style="font-weight: bold; margin-bottom: 5px; display: block; color: var(--foreground);">Date de Fin</label>
                 <input type="date" name="end_date" value="{{ $endDate }}" class="form-control">
             </div>
 
-            <div style="display: flex; gap: 10px;">
-                <button type="submit" class="btn btn-primary" style="font-weight: bold; padding: 0.75rem 1.5rem;">
+            <!-- Select Report Type Dropdown -->
+            <div class="form-group" style="flex: 1.5; min-width: 220px;">
+                <label class="form-label" style="font-weight: bold; margin-bottom: 5px; display: block; color: var(--foreground);">Type de Rapport (PDF)</label>
+                <select name="report_type" id="report_type" class="form-control">
+                    <option value="p_and_l">📈 Compte de Résultat (P&L global)</option>
+                    <option value="sales">📊 Rapport de Ventes & TVA (Sales)</option>
+                    <option value="purchases">📦 Approvisionnements (Purchases)</option>
+                    <option value="expenses">💸 Dépenses de Fonctionnement (Expenses)</option>
+                </select>
+            </div>
+
+            <div style="display: flex; gap: 10px; flex: 0 0 auto;">
+                <button type="submit" class="btn btn-primary" style="padding: 0 1.5rem; margin: 0;">
                     🔍 Filtrer
                 </button>
                 
-                <a href="{{ route('admin.reports.pdf', ['start_date' => $startDate, 'end_date' => $endDate]) }}" class="btn" style="background-color: var(--success); border-color: var(--success); color: white; font-weight: bold; padding: 0.75rem 1.5rem; display: flex; align-items: center; gap: 8px;">
+                <a href="#" onclick="triggerPdfDownload(event)" class="btn" style="background-color: var(--success); border-color: var(--success); color: white; padding: 0 1.5rem; margin: 0; gap: 8px;">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px;">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
@@ -132,4 +199,14 @@
         </div>
     </div>
 </div>
+
+<!-- JavaScript to handle dynamic PDF parameters -->
+<script>
+function triggerPdfDownload(event) {
+    event.preventDefault();
+    const reportType = document.getElementById('report_type').value;
+    const url = "{{ route('admin.reports.pdf') }}?start_date={{ $startDate }}&end_date={{ $endDate }}&report_type=" + reportType;
+    window.location.href = url;
+}
+</script>
 @endsection
