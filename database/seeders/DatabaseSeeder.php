@@ -5,7 +5,10 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use App\Models\User;
 use App\Models\Category;
+use App\Models\Ingredient;
 use App\Models\Product;
+use App\Models\Recipe;
+use App\Models\Supplier;
 use HasinHayder\Tyro\Models\Role;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Artisan;
@@ -58,8 +61,81 @@ class DatabaseSeeder extends Seeder
             'password' => Hash::make('password123'),
         ]);
         $cashier->assignRole($cashierRole);
+          // ======================================================
+        // 🚀 4. PRE-SEED FOUR SUPPLIERS (MODULE 3)
+        // ======================================================
+        $metro = Supplier::create([
+            'name' => 'Metro Cash & Carry Bordeaux',
+            'contact_name' => 'Jean Dupont',
+            'email' => 'contact.bordeaux@metro.fr',
+            'phone' => '0556112233',
+        ]);
 
-       // ======================================================
+        $boulangerie = Supplier::create([
+            'name' => 'Boulangerie de la Rose',
+            'contact_name' => 'Marie Dubois',
+            'email' => 'contact@boulangeriedelarose.fr',
+            'phone' => '0556445566',
+        ]);
+
+        $pomona = Supplier::create([
+            'name' => 'Pomona Gastronomie',
+            'contact_name' => 'Pierre Martin',
+            'email' => 'bordeaux@pomona.fr',
+            'phone' => '0556778899',
+        ]);
+
+        $boissons = Supplier::create([
+            'name' => 'Grossiste Boissons Atlantique',
+            'contact_name' => 'Nicolas Bernard',
+            'email' => 'commandes@boissonsatlantique.fr',
+            'phone' => '0556223344',
+        ]);
+
+        // ======================================================
+        // 🚀 5. PRE-SEED INGREDIENTS LINKED TO SUPPLIERS
+        // ======================================================
+        $bun = Ingredient::create([
+            'primary_supplier_id' => $boulangerie->id,
+            'name' => 'Pain Burger (Bun)', 
+            'stock_level' => 500.00, 
+            'alert_level' => 50.00, 
+            'unit' => 'unit'
+        ]);
+
+        $beef = Ingredient::create([
+            'primary_supplier_id' => $metro->id,
+            'name' => 'Steack Haché de Bœuf', 
+            'stock_level' => 500.00, 
+            'alert_level' => 50.00, 
+            'unit' => 'unit'
+        ]);
+
+        $cheddar = Ingredient::create([
+            'primary_supplier_id' => $pomona->id,
+            'name' => 'Cheddar Tranche', 
+            'stock_level' => 800.00, 
+            'alert_level' => 80.00, 
+            'unit' => 'unit'
+        ]);
+
+        $cokeCan = Ingredient::create([
+            'primary_supplier_id' => $boissons->id,
+            'name' => 'Canette Coca-Cola 33cl', 
+            'stock_level' => 240.00, 
+            'alert_level' => 48.00, 
+            'unit' => 'unit'
+        ]);
+
+        $potatoes = Ingredient::create([
+            'primary_supplier_id' => $pomona->id,
+            'name' => 'Pomme de terre (Frites)', 
+            'stock_level' => 100000.00, // 100 kg stored in grams
+            'alert_level' => 20000.00, // 20 kg
+            'unit' => 'g'
+        ]);
+
+        // ======================================================
         // 🍔 MULTIDIMENSIONAL CATALOG DATASET (12 Categories, 91 Products)
         // ======================================================
         $menuData = [
@@ -218,23 +294,58 @@ class DatabaseSeeder extends Seeder
             ]
         ];
 
-        // 5. Populate categories and products using a fast SQL loop
+        // 6. Populate categories and products using a fast SQL loop
         foreach ($menuData as $group) {
             $category = Category::create([
                 'name' => $group['category']
             ]);
 
-            foreach ($group['products'] as $product) {
-                Product::create([
+            foreach ($group['products'] as $productData) {
+                $product = Product::create([
                     'category_id' => $category->id,
-                    'name' => $product['name'],
-                    'price' => $product['price'],
-                    'vat_rate' => $product['vat_rate'],
+                    'name' => $productData['name'],
+                    'price' => $productData['price'],
+                    'vat_rate' => $productData['vat_rate'],
                     'is_active' => true,
                 ]);
+
+                // ======================================================
+                // 🚀 NEW: AUTOMATED RECIPE MAPPING ENGINE (MODULE 2)
+                // Automatically attach realistic recipes to all 91 products!
+                // ======================================================
+                
+                // A. If the product belongs to any of the "Burgers" categories:
+                if (str_contains($category->name, 'Burgers')) {
+                    // All burgers require 1 Bun and 1 Cheddar slice
+                    Recipe::create(['product_id' => $product->id, 'ingredient_id' => $bun->id, 'quantity' => 1.00]);
+                    Recipe::create(['product_id' => $product->id, 'ingredient_id' => $cheddar->id, 'quantity' => 1.00]);
+
+                    // Determine beef patties required based on burger name
+                    $pattyQty = 1.00;
+                    if (str_contains($product->name, 'Double')) {
+                        $pattyQty = 2.00;
+                    } elseif (str_contains($product->name, 'Triple') || str_contains($product->name, 'Monster')) {
+                        $pattyQty = 3.00;
+                    }
+
+                    Recipe::create(['product_id' => $product->id, 'ingredient_id' => $beef->id, 'quantity' => $pattyQty]);
+                }
+
+                // B. If the product is "French Fries" in the Sides category:
+                elseif (str_contains($product->name, 'Fries') || str_contains($product->name, 'Frites')) {
+                    // Mapped to 150g of Potatoes
+                    Recipe::create(['product_id' => $product->id, 'ingredient_id' => $potatoes->id, 'quantity' => 150.00]);
+                }
+
+                // C. If the product is a "Coca-Cola" in Boissons Gazeuses:
+                elseif (str_contains($product->name, 'Coca-Cola')) {
+                    // Mapped to 1 Can
+                    Recipe::create(['product_id' => $product->id, 'ingredient_id' => $cokeCan->id, 'quantity' => 1.00]);
+                }
             }
         }
-        // 6. Clean up Tyro default admin account
+
+        // 7. Clean up Tyro default admin account
         User::where('email', 'admin@tyro.project')->delete();
     }
 }

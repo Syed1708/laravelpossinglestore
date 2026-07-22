@@ -107,22 +107,36 @@
                 Privileges
             </a>
 
-                        <!-- 🚀 NEW: CUSTOM REPORTS MENU LINK -->
-            <a href="{{ route('admin.reports.index') }}" class="sidebar-link {{ request()->routeIs('admin.reports.index') ? 'active' : '' }}">
+            <!-- 🚀 NEW: CUSTOM REPORTS MENU LINK -->
+            <a href="{{ route('admin.reports.index') }}"
+                class="sidebar-link {{ request()->routeIs('admin.reports.index') ? 'active' : '' }}">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
                 </svg>
                 Rapports (PDF)
             </a>
 
-                        <!-- 🚀 ADD RECIPES HERE -->
-            <a href="{{ route('admin.recipes.index') }}" class="sidebar-link {{ request()->routeIs('admin.recipes.*') ? 'active' : '' }}">
+            <!-- 🚀 ADD RECIPES HERE -->
+            <a href="{{ route('admin.recipes.index') }}"
+                class="sidebar-link {{ request()->routeIs('admin.recipes.*') ? 'active' : '' }}">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m3.75 9v6m3-3H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m3.75 9v6m3-3H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
                 </svg>
                 Fiches Recettes
             </a>
-            
+
+            <!-- 🚀 ADD PURHASES HERE -->
+            <a href="{{ route('admin.purchases.index') }}"
+                class="sidebar-link {{ request()->routeIs('admin.purchases.*') ? 'active' : '' }}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M8.25 18.75a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM19.5 18.75a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM5.25 16.5h13.853a3 3 0 001.442-.369l3.14-1.63a1.5 1.5 0 00.77-1.312V6.375a1.5 1.5 0 00-.77-1.313l-3.14-1.63a3 3 0 00-1.442-.369H5.25A1.5 1.5 0 003.75 4.5v10.5a1.5 1.5 0 001.5 1.5zM12 6.75h.007v.008H12V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM12 9.75h.007v.008H12V9.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM12 12.75h.007v.008H12v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                </svg>
+                Livraisons Stock
+            </a>
+
             @if (config('tyro-dashboard.features.invitation_system', true))
                 <a href="{{ route($dashboardRoute::name('invitations.admin.index')) }}"
                     class="sidebar-link {{ request()->routeIs($dashboardRoute::pattern('invitations.admin.*')) ? 'active' : '' }}">

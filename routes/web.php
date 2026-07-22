@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\DailyClosureController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\RecipeController;
 use App\Http\Controllers\Admin\ReportController;
+use App\Http\Controllers\Admin\PurchaseOrderController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -40,3 +41,18 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::post('/admin/recipes/{product}/ingredients', [RecipeController::class, 'store'])->name('admin.recipes.store');
     Route::delete('/admin/recipes/{product}/ingredients/{recipe}', [RecipeController::class, 'destroy'])->name('admin.recipes.destroy');
 });
+
+
+
+Route::middleware(['web', 'auth'])->group(function () {
+    // Custom Purchase Order CRUD
+    Route::get('/admin/purchases', [PurchaseOrderController::class, 'index'])->name('admin.purchases.index');
+    Route::get('/admin/purchases/create', [PurchaseOrderController::class, 'create'])->name('admin.purchases.create');
+    Route::post('/admin/purchases', [PurchaseOrderController::class, 'store'])->name('admin.purchases.store');
+    Route::get('/admin/purchases/{purchase}', [PurchaseOrderController::class, 'show'])->name('admin.purchases.show');
+    Route::post('/admin/purchases/{purchase}/receive', [PurchaseOrderController::class, 'receive'])->name('admin.purchases.receive');
+    Route::delete('/admin/purchases/{purchase}', [PurchaseOrderController::class, 'destroy'])->name('admin.purchases.destroy');
+// 🚀 NEW: Cancel/Reject Delivery Route
+    Route::post('/admin/purchases/{purchase}/cancel', [PurchaseOrderController::class, 'cancel'])->name('admin.purchases.cancel');
+    
+    });
