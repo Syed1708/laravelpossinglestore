@@ -5,10 +5,17 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use App\Models\User;
 use App\Models\Category;
+use App\Models\Expense;
 use App\Models\Ingredient;
+use App\Models\Order;
+use App\Models\OrderItem;
+use App\Models\Payment;
 use App\Models\Product;
+use App\Models\PurchaseOrder;
+use App\Models\PurchaseOrderItem;
 use App\Models\Recipe;
 use App\Models\Supplier;
+use Carbon\Carbon;
 use HasinHayder\Tyro\Models\Role;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Artisan;
@@ -61,8 +68,8 @@ class DatabaseSeeder extends Seeder
             'password' => Hash::make('password123'),
         ]);
         $cashier->assignRole($cashierRole);
-          // ======================================================
-        // 🚀 4. PRE-SEED FOUR SUPPLIERS (MODULE 3)
+           // ======================================================
+        // 4. PRE-SEED FOUR SUPPLIERS (MODULE 3)
         // ======================================================
         $metro = Supplier::create([
             'name' => 'Metro Cash & Carry Bordeaux',
@@ -93,7 +100,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         // ======================================================
-        // 🚀 5. PRE-SEED INGREDIENTS LINKED TO SUPPLIERS
+        // 5. PRE-SEED INGREDIENTS WITH REAL WHOLESALE PRICING
         // ======================================================
         $bun = Ingredient::create([
             'primary_supplier_id' => $boulangerie->id,
@@ -130,13 +137,13 @@ class DatabaseSeeder extends Seeder
         $potatoes = Ingredient::create([
             'primary_supplier_id' => $pomona->id,
             'name' => 'Pomme de terre (Frites)', 
-            'stock_level' => 100000.00, // 100 kg stored in grams
+            'stock_level' => 100000.00, // 100 kg in grams
             'alert_level' => 20000.00, // 20 kg
             'unit' => 'g'
         ]);
 
         // ======================================================
-        // 🍔 MULTIDIMENSIONAL CATALOG DATASET (12 Categories, 91 Products)
+        // 🍔 MULTIDIMENSIONAL CATALOG DATASET (91 Products)
         // ======================================================
         $menuData = [
             [
@@ -294,7 +301,10 @@ class DatabaseSeeder extends Seeder
             ]
         ];
 
-        // 6. Populate categories and products using a fast SQL loop
+        // 6. Populate categories and products
+        // Stores all product models mapping to automatically attach recipes in step 8
+        $productModelMap = [];
+
         foreach ($menuData as $group) {
             $category = Category::create([
                 'name' => $group['category']
@@ -309,18 +319,15 @@ class DatabaseSeeder extends Seeder
                     'is_active' => true,
                 ]);
 
+                $productModelMap[$product->name] = $product;
+
                 // ======================================================
-                // 🚀 NEW: AUTOMATED RECIPE MAPPING ENGINE (MODULE 2)
-                // Automatically attach realistic recipes to all 91 products!
+                // 🚀 AUTOMATED RECIPE MAPPING ENGINE (MODULE 2)
                 // ======================================================
-                
-                // A. If the product belongs to any of the "Burgers" categories:
                 if (str_contains($category->name, 'Burgers')) {
-                    // All burgers require 1 Bun and 1 Cheddar slice
                     Recipe::create(['product_id' => $product->id, 'ingredient_id' => $bun->id, 'quantity' => 1.00]);
                     Recipe::create(['product_id' => $product->id, 'ingredient_id' => $cheddar->id, 'quantity' => 1.00]);
 
-                    // Determine beef patties required based on burger name
                     $pattyQty = 1.00;
                     if (str_contains($product->name, 'Double')) {
                         $pattyQty = 2.00;
@@ -331,21 +338,210 @@ class DatabaseSeeder extends Seeder
                     Recipe::create(['product_id' => $product->id, 'ingredient_id' => $beef->id, 'quantity' => $pattyQty]);
                 }
 
-                // B. If the product is "French Fries" in the Sides category:
                 elseif (str_contains($product->name, 'Fries') || str_contains($product->name, 'Frites')) {
-                    // Mapped to 150g of Potatoes
                     Recipe::create(['product_id' => $product->id, 'ingredient_id' => $potatoes->id, 'quantity' => 150.00]);
                 }
 
-                // C. If the product is a "Coca-Cola" in Boissons Gazeuses:
                 elseif (str_contains($product->name, 'Coca-Cola')) {
-                    // Mapped to 1 Can
                     Recipe::create(['product_id' => $product->id, 'ingredient_id' => $cokeCan->id, 'quantity' => 1.00]);
                 }
             }
         }
 
-        // 7. Clean up Tyro default admin account
+        // ======================================================
+        // 🚀 7. PRE-SEED COMPLETED SUPPLIER INVOICE (PO #1001)
+        // Highly realistic wholesale restaurant costs (Bordeaux) [1.1.2]
+        // ======================================================
+        $po = PurchaseOrder::create([
+            'supplier_id' => $metro->id,
+            'po_number' => 1001,
+            'invoice_number' => 'FACT-2026-001',
+            'status' => 'received',
+            'total_cost' => 117.80, // (100 * 0.45) + (100 * 0.20) + (150 * 0.10) + (48 * 0.60)
+            'received_at' => Carbon::now()->subDays(1),
+        ]);
+
+        PurchaseOrderItem::create([
+            'purchase_order_id' => $po->id,
+            'ingredient_id' => $beef->id, // Raw Beef Patty
+            'quantity_ordered' => 100.00,
+            'quantity_received' => 100.00,
+            'unit_price' => 0.45, // 0.45 € per patty
+        ]);
+        PurchaseOrderItem::create([
+            'purchase_order_id' => $po->id,
+            'ingredient_id' => $bun->id, // Buns
+            'quantity_ordered' => 100.00,
+            'quantity_received' => 100.00,
+            'unit_price' => 0.20, // 0.20 € per bun
+        ]);
+        PurchaseOrderItem::create([
+            'purchase_order_id' => $po->id,
+            'ingredient_id' => $cheddar->id, // Cheddar
+            'quantity_ordered' => 150.00,
+            'quantity_received' => 150.00,
+            'unit_price' => 0.10, // 0.10 € per slice
+        ]);
+        PurchaseOrderItem::create([
+            'purchase_order_id' => $po->id,
+            'ingredient_id' => $cokeCan->id, // Coca Cans
+            'quantity_ordered' => 48.00,
+            'quantity_received' => 48.00,
+            'unit_price' => 0.60, // 0.60 € per can
+        ]);
+
+        // Increment stock levels in SQLite/MySQL for received items
+        $beef->increment('stock_level', 100.00);
+        $bun->increment('stock_level', 100.00);
+        $cheddar->increment('stock_level', 150.00);
+        $cokeCan->increment('stock_level', 48.00);
+
+        // Save a corresponding Food Cost (COGS) Expense record
+        Expense::create([
+            'category' => 'food_cost',
+            'description' => "Approvisionnement PO #1001 (Facture #FACT-2026-001)",
+            'amount' => 117.80,
+            'payment_method' => 'bank_transfer',
+            'purchase_order_id' => $po->id,
+            'paid_at' => Carbon::now()->subDays(1),
+        ]);
+
+        // ======================================================
+        // 🚀 8. PRE-SEED NON-FOOD UTILITY EXPENSES (OPEX)
+        // ======================================================
+        // A. Monthly Rent Expense [1]
+        Expense::create([
+            'category' => 'rent',
+            'description' => 'Loyer Commercial (Bordeaux)',
+            'amount' => 1200.00,
+            'payment_method' => 'bank_transfer',
+            'paid_at' => Carbon::now()->startOfMonth(),
+        ]);
+
+        // B. Electricity Bill Expense [1]
+        Expense::create([
+            'category' => 'electricity',
+            'description' => 'Facture Électricité EDF',
+            'amount' => 200.00,
+            'payment_method' => 'bank_transfer',
+            'paid_at' => Carbon::now()->startOfMonth(),
+        ]);
+
+        // ======================================================
+        // 🚀 9. NEW: PRE-SEED 150 COMPLETED SALES ORDERS (REVENUE)
+        // Automatically calculates actual VAT splits and builds 
+        // the cryptographic SHA-256 hash chains in real-time [1]!
+        // ======================================================
+        $this->command->info("Seeding 150 cryptographically secure sales orders...");
+
+        $salesStartDate = Carbon::now()->subDays(5);
+        $previousHash = '0000000000000000000000000000000000000000000000000000000000000000';
+        $sequenceNumber = 1;
+
+        // Products we want to randomly sell
+        $sellableProducts = [
+            $productModelMap['Single Cheeseburger'],
+            $productModelMap['Double Cheeseburger'],
+            $productModelMap['Classic Bacon Burger'],
+            $productModelMap['Small French Fries'],
+            $productModelMap['Medium French Fries'],
+            $productModelMap['Coca-Cola Classic 33cl'],
+            $productModelMap['Evian Still Water 50cl'],
+        ];
+
+        for ($i = 0; $i < 150; $i++) {
+            // Generate a random completed date over the last 5 days
+            $completedAt = $salesStartDate->copy()->addMinutes(rand(10, 7200));
+
+            // Randomly select 1 to 3 items for this order
+            $orderItems = [];
+            $subtotalExclVat = 0;
+            $vatAmount = 0;
+            $totalInclVat = 0;
+
+            $numItems = rand(1, 3);
+            $selectedProducts = array_rand($sellableProducts, $numItems);
+            $selectedProductsList = is_array($selectedProducts) ? $selectedProducts : [$selectedProducts];
+
+            foreach ($selectedProductsList as $prodIndex) {
+                $prod = $sellableProducts[$prodIndex];
+                $quantity = rand(1, 2);
+                $itemTotalTtc = $prod->price * $quantity;
+                $itemSubtotalHt = $itemTotalTtc / (1 + ($prod->vat_rate / 100));
+                $itemVat = $itemTotalTtc - $itemSubtotalHt;
+
+                $subtotalExclVat += $itemSubtotalHt;
+                $vatAmount += $itemVat;
+                $totalInclVat += $itemTotalTtc;
+
+                $orderItems[] = [
+                    'product_id' => $prod->id,
+                    'product_name' => $prod->name,
+                    'quantity' => $quantity,
+                    'unit_price' => $prod->price,
+                    'vat_rate' => $prod->vat_rate,
+                    'subtotal' => $itemTotalTtc,
+                ];
+            }
+
+            // 🚀 THE CRYPTO ENGINE: Generate mathematically secure SHA-256 hash chains! [1]
+            $orderUuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx';
+            $orderUuid = preg_replace_callback('/[xy]/', function ($matches) {
+                $r = random_int(0, 15);
+                $v = $matches[0] === 'x' ? $r : ($r & 0x3 | 0x8);
+                return dechex($v);
+            }, $orderUuid);
+
+            // Format the string identically to both JS (tablet) and PHP (verifier) [1]
+            $dataToHash = "{$sequenceNumber}|" . number_format($subtotalExclVat, 2, '.', '') . "|" . number_format($vatAmount, 2, '.', '') . "|" . number_format($totalInclVat, 2, '.', '') . "|{$completedAt->setTimezone('UTC')->format('Y-m-d\TH:i:s\Z')}|{$previousHash}";
+            
+            $currentHash = hash('sha256', $dataToHash);
+
+            // Create Order
+            $order = Order::create([
+                'uuid' => $orderUuid,
+                'user_id' => $cashier->id,
+                'sequence_number' => $sequenceNumber,
+                'subtotal_excl_vat' => $subtotalExclVat,
+                'vat_amount' => $vatAmount,
+                'total_incl_vat' => $totalInclVat,
+                'hash' => $currentHash,
+                'previous_hash' => $previousHash,
+                'completed_at' => $completedAt,
+            ]);
+
+            // Create Order Items
+            foreach ($orderItems as $item) {
+                OrderItem::create([
+                    'order_id' => $order->id,
+                    'product_id' => $item['product_id'],
+                    'product_name' => $item['product_name'],
+                    'quantity' => $item['quantity'],
+                    'unit_price' => $item['unit_price'],
+                    'vat_rate' => $item['vat_rate'],
+                    'subtotal' => $item['subtotal'],
+                ]);
+
+                // Deduct stocks automatically! [1]
+                $recipes = Recipe::where('product_id', $item['product_id'])->get();
+                foreach ($recipes as $recipe) {
+                    Ingredient::where('id', $recipe->ingredient_id)->decrement('stock_level', $item['quantity'] * $recipe->quantity);
+                }
+            }
+
+            // Create Payment
+            Payment::create([
+                'order_id' => $order->id,
+                'amount' => $totalInclVat,
+                'method' => rand(1, 100) > 40 ? 'card' : 'cash', // 60% Card, 40% Cash
+            ]);
+
+            // Move the chain forward
+            $previousHash = $currentHash;
+            $sequenceNumber++;
+        }
+
+        // 9. Clean up Tyro default admin account
         User::where('email', 'admin@tyro.project')->delete();
     }
 }

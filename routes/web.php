@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\Admin\DailyClosureController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\MenuEngineeringController;
 use App\Http\Controllers\Admin\RecipeController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\PurchaseOrderController;
@@ -56,3 +57,8 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::post('/admin/purchases/{purchase}/cancel', [PurchaseOrderController::class, 'cancel'])->name('admin.purchases.cancel');
     
     });
+
+Route::middleware(['web', 'auth'])->group(function () {
+    // Custom Menu Engineering & Profitability route
+    Route::get('/admin/menu-engineering', [MenuEngineeringController::class, 'index'])->name('admin.menu-engineering.index');
+});

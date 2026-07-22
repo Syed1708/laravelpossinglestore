@@ -4,22 +4,37 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Models\Expense;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
 class DashboardController extends Controller
 {
-    public function index()
+    /**
+     * Display the dynamic dashboard with real-time date filtering.
+     */
+    public function index(Request $request)
     {
         $user = auth()->user();
         $isAdmin = $user->hasRole('super-admin') || $user->hasRole('admin');
 
-        $todayStart = Carbon::today()->startOfDay();
-        $todayEnd = Carbon::today()->endOfDay();
+        // 1. Determine active filter type (default: today)
+        $filterType = $request->input('filter_type', 'today');
 
-        // 1. Calculate Core Totals
-        $totals = Order::whereBetween('completed_at', [$todayStart, $todayEnd])
+        if ($filterType === 'month') {
+            $startDate = Carbon::now()->startOfMonth();
+            $endDate = Carbon::now()->endOfMonth();
+        } elseif ($filterType === 'custom' && $request->has('start_date') && $request->has('end_date')) {
+            $startDate = Carbon::parse($request->input('start_date'))->startOfDay();
+            $endDate = Carbon::parse($request->input('end_date'))->endOfDay();
+        } else {
+            $filterType = 'today';
+            $startDate = Carbon::today()->startOfDay();
+            $endDate = Carbon::today()->endOfDay();
+        }
+
+        // 2. Calculate Revenue (HT & TTC) for Selected Period
+        $revenue = Order::whereBetween('completed_at', [$startDate, $endDate])
             ->selectRaw('
                 COALESCE(SUM(total_incl_vat), 0) as total_ttc,
                 COALESCE(SUM(subtotal_excl_vat), 0) as total_ht,
@@ -27,38 +42,35 @@ class DashboardController extends Controller
             ')
             ->first();
 
-        // 2. Calculate Payment Method Distributions
-        $payments = DB::table('payments')
-            ->join('orders', 'payments.order_id', '=', 'orders.id')
-            ->whereBetween('orders.completed_at', [$todayStart, $todayEnd])
-            ->select('payments.method', DB::raw('SUM(payments.amount) as total_amount'))
-            ->groupBy('payments.method')
-            ->get();
+        // 3. Calculate Cost of Goods Sold (COGS - Food Cost) for Selected Period
+        $foodCost = Expense::where('category', 'food_cost')
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->sum('amount');
 
-        // 3. Calculate VAT Breakdown per French bracket
-        $vatBreakdown = DB::table('order_items')
-            ->join('orders', 'order_items.order_id', '=', 'orders.id')
-            ->whereBetween('orders.completed_at', [$todayStart, $todayEnd])
-            ->select(
-                'order_items.vat_rate',
-                DB::raw('SUM(order_items.subtotal) as total_ttc'),
-                DB::raw('SUM(order_items.subtotal - (order_items.subtotal / (1 + (order_items.vat_rate / 100)))) as collected_vat')
-            )
-            ->groupBy('order_items.vat_rate')
-            ->orderBy('order_items.vat_rate', 'asc')
-            ->get();
+        // 4. Calculate Operating Expenses (OPEX) for Selected Period
+        $operatingCost = Expense::where('category', '!=', 'food_cost')
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->sum('amount');
 
-        // 4. Get the 10 most recent synced orders
-        $recentOrders = Order::orderBy('completed_at', 'desc')
+        // 5. Calculate Net Profit
+        $netProfit = $revenue->total_ht - ($foodCost + $operatingCost);
+
+        // 6. Get the 10 most recent synced orders in this period
+        $recentOrders = Order::whereBetween('completed_at', [$startDate, $endDate])
+            ->orderBy('completed_at', 'desc')
             ->limit(10)
             ->get();
 
         return view('admin.dashboard', [
-            'totals' => $totals,
-            'payments' => $payments,
-            'vatBreakdown' => $vatBreakdown,
+            'revenue' => $revenue,
+            'foodCost' => $foodCost,
+            'operatingCost' => $operatingCost,
+            'netProfit' => $netProfit,
             'recentOrders' => $recentOrders,
             'isAdmin' => $isAdmin,
+            'filterType' => $filterType,
+            'startDate' => $startDate->format('Y-m-d'),
+            'endDate' => $endDate->format('Y-m-d'),
         ]);
     }
 }

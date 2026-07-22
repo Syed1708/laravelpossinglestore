@@ -46,7 +46,7 @@ class PurchaseOrderController extends Controller
         $request->validate([
             'supplier_id' => 'required|exists:suppliers,id',
             'po_number' => 'required|integer|unique:purchase_orders,po_number',
-            'import_file' => 'required|file|extensions:csv,txt|max:2048', 
+            'import_file' => 'required|file|extensions:csv,txt|max:2048',
         ]);
 
         $file = $request->file('import_file');
@@ -91,7 +91,7 @@ class PurchaseOrderController extends Controller
 
             // Convert French Latin-1/ISO-8859-1 encodings to UTF-8
             $ingredientName = mb_convert_encoding(trim($row[0]), 'UTF-8', 'UTF-8, ISO-8859-1, ASCII');
-            
+
             // 🚀 THE FIX 3: Defensive string length & non-printable character checks
             // If the name is ridiculously long, or contains binary controls, it's a corrupted file!
             if (strlen($ingredientName) > 100 || preg_match('/[\x00-\x08\x0B\x0C\x0E-\x1F]/', $ingredientName)) {
@@ -152,7 +152,6 @@ class PurchaseOrderController extends Controller
 
             DB::commit();
             return redirect()->route('admin.purchases.index')->with('success', 'Bon de commande créé avec succès !');
-
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()->with('error', 'Erreur lors de la création : ' . $e->getMessage());
@@ -213,6 +212,16 @@ class PurchaseOrderController extends Controller
 
                 'status' => 'received',
                 'received_at' => Carbon::now(),
+            ]);
+
+            // 🚀 THE AUTOMATION: Automatically log this delivered purchase as a Food Cost expense!
+            \App\Models\Expense::create([
+                'category' => 'food_cost',
+                'description' => "Approvisionnement PO #{$order->po_number} (Facture #{$order->invoice_number})",
+                'amount' => $totalCost,
+                'payment_method' => 'bank_transfer',
+                'purchase_order_id' => $order->id,
+                'paid_at' => Carbon::now(),
             ]);
 
             DB::commit();

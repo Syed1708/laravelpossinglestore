@@ -137,6 +137,14 @@
                 Livraisons Stock
             </a>
 
+            <!-- 🚀 ADD PROFITABILITY LINK HERE -->
+            <a href="{{ route('admin.menu-engineering.index') }}" class="sidebar-link {{ request()->routeIs('admin.menu-engineering.*') ? 'active' : '' }}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.559c.211.135.442.2.673.2.226 0 .453-.064.661-.19a1.122 1.122 0 00.465-.916c0-.528-.4-.954-.925-1.042l-.4-.067c-.525-.088-.925-.514-.925-1.042 0-.376.183-.728.497-.918a1.121 1.121 0 011.077-.14l.879.56M12 3v18" />
+                </svg>
+                Marge & Rentabilité
+            </a>
+
             @if (config('tyro-dashboard.features.invitation_system', true))
                 <a href="{{ route($dashboardRoute::name('invitations.admin.index')) }}"
                     class="sidebar-link {{ request()->routeIs($dashboardRoute::pattern('invitations.admin.*')) ? 'active' : '' }}">
