@@ -80,7 +80,7 @@
 
 @section('content')
 <div class="page-header">
-    <h1 class="page-title">Create {{ Str::singular($config['title']) }}</h1>
+    <h1 class="page-title">{{ __('Create') }} {{ Str::singular($config['title']) }}</h1>
 </div>
 
 <div class="card">

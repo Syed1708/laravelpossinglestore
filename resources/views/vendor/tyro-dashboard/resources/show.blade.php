@@ -1,33 +1,38 @@
 @extends('tyro-dashboard::layouts.app')
 
-@section('title', $config['title'] . ' Details')
+<!-- 🚀 LOCALIZED: Page Title -->
+@section('title', __($config['title']) . ' - ' . __('Details'))
 
 @section('breadcrumb')
-<a href="{{ route($dashboardRoute::name('index')) }}">Dashboard</a>
+<a href="{{ route($dashboardRoute::name('index')) }}">{{ __('Dashboard') }}</a>
 <span class="breadcrumb-separator">/</span>
-<a href="{{ route($dashboardRoute::name('resources.index'), $resource) }}">{{ $config['title'] }}</a>
+<a href="{{ route($dashboardRoute::name('resources.index'), $resource) }}">{{ __($config['title']) }}</a>
 <span class="breadcrumb-separator">/</span>
-<span>Details</span>
+<span>{{ __('Details') }}</span>
 @endsection
 
 @section('content')
 <div class="page-header">
     <div class="page-header-row">
         <div style="display: flex; align-items: center; gap: 1rem;">
-            <a href="{{ route($dashboardRoute::name('resources.index'), $resource) }}" class="btn btn-ghost" title="Back to {{ $config['title'] }}">
+            <!-- 🚀 LOCALIZED: Back Button Tooltip with Name Variable -->
+            <a href="{{ route($dashboardRoute::name('resources.index'), $resource) }}" class="btn btn-ghost" title="{{ __('Back to :name', ['name' => __($config['title'])]) }}">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 20px; height: 20px;">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                 </svg>
             </a>
-            <h1 class="page-title">{{ Str::singular($config['title']) }} Details</h1>
+            <h1 class="page-title">{{ __(Str::singular($config['title'])) }} - {{ __('Details') }}</h1>
         </div>
         <div>
             @if(!($isReadonly ?? false))
-            <a href="{{ route($dashboardRoute::name('resources.edit'), [$resource, $item->id]) }}" class="btn btn-primary">Edit</a>
+            <!-- 🚀 LOCALIZED: Edit Button -->
+            <a href="{{ route($dashboardRoute::name('resources.edit'), [$resource, $item->id]) }}" class="btn btn-primary">{{ __('Edit') }}</a>
+            
             <form action="{{ route($dashboardRoute::name('resources.destroy'), [$resource, $item->id]) }}" method="POST" style="display: inline;" id="delete-resource-form">
                 @csrf
                 @method('DELETE')
-                <button type="button" class="btn btn-danger" onclick="event.preventDefault(); showDanger('Delete Item', 'Are you sure you want to delete this item?').then(confirmed => { if(confirmed) document.getElementById('delete-resource-form').submit(); })">Delete</button>
+                <!-- 🚀 LOCALIZED: Javascript Danger Alert Prompt Strings -->
+                <button type="button" class="btn btn-danger" onclick="event.preventDefault(); showDanger('{{ __('Delete Item') }}', '{{ __('Are you sure you want to delete this item?') }}').then(confirmed => { if(confirmed) document.getElementById('delete-resource-form').submit(); })">{{ __('Delete') }}</button>
             </form>
             @endif
         </div>
@@ -40,11 +45,13 @@
             @foreach($config['fields'] as $key => $field)
                 @if(!($field['hide_in_single_view'] ?? false))
                 <div class="detail-item">
-                    <div class="detail-label" style="font-weight: 500; color: var(--text-secondary); margin-bottom: 0.25rem;">{{ $field['label'] }}</div>
+                    <!-- 🚀 LOCALIZED: Field Label -->
+                    <div class="detail-label" style="font-weight: 500; color: var(--text-secondary); margin-bottom: 0.25rem;">{{ __($field['label']) }}</div>
                     <div class="detail-value" style="font-size: 1rem; color: var(--text-primary);">
                         @if($field['type'] === 'file')
                             @if($item->$key)
-                                <a href="{{ Storage::url($item->$key) }}" target="_blank" style="color: var(--primary); text-decoration: none;">View File</a>
+                                <!-- 🚀 LOCALIZED: View File link -->
+                                <a href="{{ Storage::url($item->$key) }}" target="_blank" style="color: var(--primary); text-decoration: none;">{{ __('View File') }}</a>
                             @else
                                 -
                             @endif
@@ -55,12 +62,14 @@
                                  {{ is_array($item->$key) ? implode(', ', $item->$key) : $item->$key }}
                              @endif
                         @elseif(($field['type'] === 'select' || $field['type'] === 'radio') && isset($field['options']))
-                            {{ $field['options'][$item->$key] ?? $item->$key }}
+                            <!-- 🚀 LOCALIZED: Option Values (e.g. cash -> Espèces) -->
+                            {{ __($field['options'][$item->$key] ?? $item->$key) }}
                         @elseif(isset($field['relationship']))
                             {{ optional($item->{$field['relationship']})->{$field['option_label'] ?? 'name'} ?? '-' }}
                         @elseif($field['type'] === 'boolean')
+                            <!-- 🚀 LOCALIZED: Boolean Badges (Yes -> Oui, No -> Non) -->
                             <span class="badge {{ $item->$key ? 'badge-success' : 'badge-secondary' }}">
-                                {{ $item->$key ? 'Yes' : 'No' }}
+                                {{ $item->$key ? __('Yes') : __('No') }}
                             </span>
                         @elseif($field['type'] === 'textarea')
                             <div style="white-space: pre-wrap;">{{ $item->$key }}</div>

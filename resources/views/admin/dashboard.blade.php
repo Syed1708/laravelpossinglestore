@@ -68,8 +68,8 @@
     <div class="page-header">
         <div class="page-header-row">
             <div>
-                <h1 class="page-title">📊 Live Sales & P&L Analytics</h1>
-                <p class="page-description">Synthèse financière et marges opérationnelles de votre restaurant.</p>
+                <h1 class="page-title">📊 {{ __('Live Sales & P&L Analytics') }}</h1>
+                <p class="page-description">{{ __('Real-time financial summaries synced from your fast-food terminals.') }}</p>
             </div>
         </div>
     </div>
@@ -143,7 +143,7 @@
                 </svg>
             </div>
             <div class="stat-content">
-                <div class="stat-label">Chiffre d'Affaires (HT)</div>
+                <div class="stat-label">{{ __('Revenue (before tax)') }}</div>
                 <div class="stat-value" style="color: var(--primary);">{{ number_format($revenue->total_ht, 2, ',', ' ') }}
                     €</div>
             </div>
@@ -158,7 +158,7 @@
                 </svg>
             </div>
             <div class="stat-content">
-                <div class="stat-label">Coût Matières (Food Cost)</div>
+                <div class="stat-label">{{ __('COGS (Food Cost)') }}</div>
                 <div class="stat-value" style="color: rgb(239, 68, 68);">{{ number_format($foodCost, 2, ',', ' ') }} €</div>
             </div>
         </div>
@@ -172,7 +172,7 @@
                 </svg>
             </div>
             <div class="stat-content">
-                <div class="stat-label">Bénéfice Net Estimé</div>
+                <div class="stat-label">{{ __('Net Profit (Estimated)') }}</div>
                 <div class="stat-value" style="color: var(--success);">{{ number_format($netProfit, 2, ',', ' ') }} €</div>
             </div>
         </div>
@@ -183,34 +183,34 @@
         <!-- Card Left: P&L Accounting Ledger Statement -->
         <div class="card">
             <div class="card-header">
-                <h3 class="card-title">⚖️ Compte de Résultat Périodique (P&L)</h3>
+                <h3 class="card-title">⚖️ {{ __('P&L Statement') }}</h3>
             </div>
             <div class="card-body">
                 <div style="display: flex; flex-direction: column; gap: 15px;">
                     <div
                         style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 8px;">
-                        <span style="color: var(--muted-foreground);">Ventes Brutes (TTC) :</span>
+                        <span style="color: var(--muted-foreground);">{{ __('Gross Sales (TTC)') }} :</span>
                         <strong style="color: var(--foreground);">{{ number_format($revenue->total_ttc, 2, ',', ' ') }}
                             €</strong>
                     </div>
                     <div
                         style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 8px;">
-                        <span style="color: var(--muted-foreground);">Ventes Nettes (HT) (A) :</span>
+                        <span style="color: var(--muted-foreground);">{{ __('Net Sales (HT) (A)') }} :</span>
                         <strong style="color: var(--foreground);">{{ number_format($revenue->total_ht, 2, ',', ' ') }}
                             €</strong>
                     </div>
                     <div
                         style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 8px; color: rgb(239, 68, 68);">
-                        <span>Coût des Matières (COGS) (B) :</span>
+                        <span>{{ __('COGS (Food Cost)') }} (B) :</span>
                         <strong>-{{ number_format($foodCost, 2, ',', ' ') }} €</strong>
                     </div>
                     <div
                         style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 8px; color: rgb(100, 116, 139);">
-                        <span>Frais de Fonctionnement (OPEX) (C) :</span>
+                        <span>{{ __('Operating Expenses (OPEX)') }} (C) :</span>
                         <strong>-{{ number_format($operatingCost, 2, ',', ' ') }} €</strong>
                     </div>
                     <div style="display: flex; justify-content: space-between; padding-top: 10px; font-size: 1.25rem;">
-                        <strong style="color: var(--foreground);">Bénéfice Net (A - B - C) :</strong>
+                        <strong style="color: var(--foreground);">{{ __('Net Profit (A - B - C)') }} :</strong>
                         <strong style="color: {{ $netProfit >= 0 ? 'var(--success)' : 'var(--destructive)' }};">
                             {{ number_format($netProfit, 2, ',', ' ') }} €
                         </strong>
@@ -222,7 +222,7 @@
         <!-- Right Card: Native-Looking ChartJS Pie Chart -->
         <div class="card" style="height: fit-content; display: flex; flex-direction: column;">
             <div class="card-header">
-                <h3 class="card-title">📊 Répartition Financière</h3>
+                <h3 class="card-title">📊 {{ __('Financial Distribution') }}</h3>
             </div>
             <div class="card-body" style="display: flex; justify-content: center; align-items: center; height: 250px;">
                 <canvas id="plChart" style="max-height: 220px; max-width: 100%;"></canvas>
@@ -233,20 +233,19 @@
     <!-- 4. Recent Synced Transactions -->
     <div class="card">
         <div class="card-header">
-            <h3 class="card-title">📄 Ventes Synchronisées sur la Période</h3>
+            <h3 class="card-title">📄 {{ __('Synchronized Sales for the Period') }}</h3>
         </div>
         <div class="card-body" style="padding: 0;">
             @if ($recentOrders->isEmpty())
-                <p style="color: var(--muted-foreground); text-align: center; padding: 1.5rem 0;">Aucune transaction
-                    enregistrée pour cette période.</p>
+                <p style="color: var(--muted-foreground); text-align: center; padding: 1.5rem 0;">{{ __('No transactions recorded for this period.') }}</p>
             @else
                 <div class="table-container">
                     <table class="table">
                         <thead>
                             <tr>
                                 <th>Ticket</th>
-                                <th>Date / Heure</th>
-                                <th>Montant (TTC)</th>
+                                <th>{{ __('Date/Hour') }}</th>
+                                <th>{{__('Amount(TTC)')}}</th>
                                 <th style="text-align: right;">Status</th>
                             </tr>
                         </thead>

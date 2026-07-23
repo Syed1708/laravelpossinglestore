@@ -1,25 +1,25 @@
 @extends('tyro-dashboard::layouts.app')
 
-@section('title', $config['title'])
+@section('title', __($config['title']))
 
 @section('breadcrumb')
-<a href="{{ route($dashboardRoute::name('index')) }}">Dashboard</a>
+<a href="{{ route($dashboardRoute::name('index')) }}">{{__('Dashboard')}}</a>
 <span class="breadcrumb-separator">/</span>
-<span>{{ $config['title'] }}</span>
+<span>{{ __($config['title']) }}</span>
 @endsection
 
 @section('content')
 <div class="page-header">
     <div class="page-header-row">
         <div>
-            <h1 class="page-title">{{ $config['title'] }}</h1>
+            <h1 class="page-title">{{ __(__($config['title'])) }}</h1>
         </div>
         @if(!($isReadonly ?? false))
         <a href="{{ route($dashboardRoute::name('resources.create'), $resource) }}" class="btn btn-primary">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
             </svg>
-            Add New
+            {{ __('Add New') }}
         </a>
         @endif
     </div>
@@ -165,10 +165,10 @@
                 <path stroke-linecap="round" stroke-linejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
             </svg>
         </div>
-        <h3>No {{ strtolower($config['title']) }} found</h3>
-        <p>Get started by creating a new {{ Str::singular(strtolower($config['title'])) }}.</p>
+        <h3>No {{ strtolower(__($config['title'])) }} found</h3>
+        <p>Get started by creating a new {{ Str::singular(strtolower(__($config['title']))) }}.</p>
         @if(!($isReadonly ?? false))
-        <a href="{{ route($dashboardRoute::name('resources.create'), $resource) }}" class="btn btn-primary">Create {{ Str::singular($config['title']) }}</a>
+        <a href="{{ route($dashboardRoute::name('resources.create'), $resource) }}" class="btn btn-primary">Create {{ Str::singular(__($config['title'])) }}</a>
         @endif
     </div>
     @endif

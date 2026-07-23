@@ -62,3 +62,13 @@ Route::middleware(['web', 'auth'])->group(function () {
     // Custom Menu Engineering & Profitability route
     Route::get('/admin/menu-engineering', [MenuEngineeringController::class, 'index'])->name('admin.menu-engineering.index');
 });
+
+// routes/web.php
+
+// 🚀 Dynamic Language Switcher Route
+Route::get('/lang/{locale}', function ($locale) {
+    if (in_array($locale, ['en', 'fr'])) {
+        session()->put('locale', $locale);
+    }
+    return redirect()->back();
+})->name('lang.switch');
