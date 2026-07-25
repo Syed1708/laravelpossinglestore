@@ -104,6 +104,10 @@ class OrderSyncController extends Controller
                 $failedUuids[$orderData['uuid']] = $e->getMessage();
             }
         }
+        //🚀 THE AUTOMATION: Broadcast the WebSocket event to instantly light up the kitchen screens!
+        if (count($syncedUuids) > 0) {
+            event(new \App\Events\KdsOrderUpdated('new_orders_synced'));
+        }
 
         return response()->json([
             'message' => 'Synchronization complete',

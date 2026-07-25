@@ -15,6 +15,7 @@ class OrderItem extends Model
         'unit_price',
         'vat_rate',
         'subtotal',
+        'item_status'
     ];
     protected static function booted(): void
     {

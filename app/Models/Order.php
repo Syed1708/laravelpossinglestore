@@ -20,6 +20,7 @@ class Order extends Model
         'hash', 
         'previous_hash', 
         'status', 
+        'preparation_status',
         'completed_at'
     ];
 
