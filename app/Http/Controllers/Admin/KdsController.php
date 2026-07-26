@@ -30,8 +30,8 @@ class KdsController extends Controller
             ->with(['items' => function ($query) {
                 $query->whereHas('product.category', function ($subQuery) {
                     $subQuery->where('name', '!=', 'Boissons Gazeuses')
-                             ->where('name', '!=', 'Eaux & Jus')
-                             ->where('name', '!=', 'Café & Boissons Chaudes');
+                        ->where('name', '!=', 'Eaux & Jus')
+                        ->where('name', '!=', 'Café & Boissons Chaudes');
                 });
             }])
             ->orderBy('completed_at', 'asc')
@@ -50,7 +50,7 @@ class KdsController extends Controller
     public function getPackerOrders()
     {
         $orders = Order::whereIn('preparation_status', ['pending', 'preparing', 'ready'])
-            ->with('items.product.category') 
+            ->with('items.product.category')
             ->orderBy('completed_at', 'asc')
             ->get();
 
@@ -75,7 +75,7 @@ class KdsController extends Controller
     public function toggleItemStatus(Request $request, OrderItem $item)
     {
         $newStatus = $item->item_status === 'pending' ? 'done' : 'pending';
-        
+
         $item->update(['item_status' => $newStatus]);
 
         event(new KdsOrderUpdated('item_toggled'));
@@ -87,6 +87,7 @@ class KdsController extends Controller
      * API: Update order status.
      * 🚀 THE FIX: Uses implicit route model binding (Order $order) instead of plain IDs! [1.1.2]
      */
+
     public function updateOrderStatus(Request $request, Order $order)
     {
         $request->validate([
@@ -95,7 +96,8 @@ class KdsController extends Controller
 
         $order->update(['preparation_status' => $request->status]);
 
-        event(new KdsOrderUpdated('order_status_updated'));
+        // 🚀 Pass $order so the Client screen gets the updated preparation_status live!
+        event(new KdsOrderUpdated('order_status_updated', $order));
 
         return response()->json(['success' => true, 'new_status' => $order->preparation_status]);
     }

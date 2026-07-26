@@ -266,6 +266,19 @@ return [
                     'rules' => 'required|max:255 |unique:products,name',
                     'searchable' => true
                 ],
+                // 🚀 NEW: Product Description Textarea
+                'description' => [
+                    'type' => 'textarea',
+                    'label' => 'Product Description',
+                    'rules' => 'nullable|string|max:1000'
+                ],
+
+                // 🚀 NEW: Product Image Upload Field (Saved directly to public disk!)
+                'image_path' => [
+                    'type' => 'file',
+                    'label' => 'Product Image',
+                    'rules' => 'nullable|image|max:2048' // Max 2MB images
+                ],
                 'category_id' => [
                     'type' => 'select',
                     'label' => 'Catégorie',

@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+    // 🚀 NEW: Secure Stripe Configuration
+    'stripe' => [
+        'secret' => env('STRIPE_SECRET'),
+        'webhook' => env('STRIPE_WEBHOOK_SECRET'),
+    ],
+
 ];

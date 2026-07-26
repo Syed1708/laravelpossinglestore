@@ -90,3 +90,4 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::post('/api/kds/items/{item}/toggle', [KdsController::class, 'toggleItemStatus'])->name('admin.kds.item.toggle');
     Route::post('/api/kds/orders/{order}/status', [KdsController::class, 'updateOrderStatus'])->name('admin.kds.order.update');
 });
+
