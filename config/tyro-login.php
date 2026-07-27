@@ -272,9 +272,9 @@ return [
     'routes' => [
         'prefix' => env('TYRO_LOGIN_ROUTE_PREFIX', ''),
         'middleware' => ['web'],
-        'login' => 'login',
-        'logout' => 'logout',
-        'register' => 'register',
+        'login' => 'admin/login',
+        'logout' => 'admin/logout',
+        'register' => 'admin/register',
     ],
 
     /*
@@ -286,10 +286,10 @@ return [
     |
     */
     'redirects' => [
-        'after_login' => env('TYRO_LOGIN_REDIRECT_AFTER_LOGIN', '/'),
-        'after_logout' => env('TYRO_LOGIN_REDIRECT_AFTER_LOGOUT', '/login'),
-        'after_register' => env('TYRO_LOGIN_REDIRECT_AFTER_REGISTER', '/'),
-        'after_email_verification' => env('TYRO_LOGIN_REDIRECT_AFTER_EMAIL_VERIFICATION', '/login'),
+        'after_login' => env('TYRO_LOGIN_REDIRECT_AFTER_LOGIN', '/dashboard'),
+        'after_logout' => env('TYRO_LOGIN_REDIRECT_AFTER_LOGOUT', '/admin/login'),
+        'after_register' => env('TYRO_LOGIN_REDIRECT_AFTER_REGISTER', '/admin/login'),
+        'after_email_verification' => env('TYRO_LOGIN_REDIRECT_AFTER_EMAIL_VERIFICATION', '/admin/login'),
     ],
 
     /*
@@ -302,7 +302,7 @@ return [
         'enabled' => env('TYRO_LOGIN_REGISTRATION_ENABLED', true),
 
         // Whether to automatically log in the user after registration
-        'auto_login' => env('TYRO_LOGIN_REGISTRATION_AUTO_LOGIN', true),
+        'auto_login' => env('TYRO_LOGIN_REGISTRATION_AUTO_LOGIN', false),
 
         // Whether to require email verification after registration
         'require_email_verification' => env('TYRO_LOGIN_REQUIRE_EMAIL_VERIFICATION', false),
