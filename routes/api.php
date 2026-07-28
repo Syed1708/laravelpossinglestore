@@ -6,6 +6,8 @@ use App\Http\Controllers\Api\OrderSyncController;
 use App\Http\Controllers\Api\MenuController;
 use App\Http\Controllers\Api\v1\client\ClientAuthController;
 use App\Http\Controllers\Api\v1\client\StripeWebController;
+use App\Http\Controllers\Api\v1\Pos\DayClosureApiController;
+use App\Http\Controllers\Api\v1\Pos\PosSalesApiController;
 use App\Http\Controllers\Api\v1\staff\AuthController;
 
 /*
@@ -38,7 +40,19 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // POS Bulk Sync Route
     Route::post('/orders/sync', [OrderSyncController::class, 'sync']);
+    // z-closure
+    Route::get('/pos/z-closure/summary', [DayClosureApiController::class, 'getShiftSummary']);
+    Route::post('/pos/z-closure/confirm', [DayClosureApiController::class, 'closeDay']);
+    Route::get('/pos/z-closure/history', [DayClosureApiController::class, 'getClosureHistory']);
+
+
+        // 🚀 POS Sales History & Refunds
+    Route::get('/pos/sales', [PosSalesApiController::class, 'getSalesHistory']);
+    Route::get('/pos/sales/{id}', [PosSalesApiController::class, 'showOrderDetails']);
+    Route::post('/pos/refund/{id}', [PosSalesApiController::class, 'refundOrder']);
+
 });
+
 
 // Clients
 
