@@ -1,13 +1,15 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Api\v1\client; // 🚀 CORRECT NAMESPACE TO MATCH FOLDER!
+
+use App\Http\Controllers\Controller; // 🚀 Import base Controller
 
 use App\Models\Client;
 use App\Models\Order;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
-class AuthController extends Controller
+class ClientAuthController extends Controller
 {
     public function login(Request $request)
     {

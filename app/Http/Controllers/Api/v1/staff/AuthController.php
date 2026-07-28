@@ -1,6 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Api\v1\staff; // 🚀 CORRECT NAMESPACE TO MATCH FOLDER!
+
+use App\Http\Controllers\Controller; // 🚀 Import base Controller
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -16,7 +18,10 @@ class AuthController extends Controller
         ]);
 
         $user = User::where('email', $request->email)->first();
-
+       
+    if (!$user) {
+        return response()->json(['message' => 'Staff email not found in users table'], 401);
+    }
         if (!$user || !Hash::check($request->password, $user->password)) {
             return response()->json(['message' => 'Invalid credentials'], 401);
         }

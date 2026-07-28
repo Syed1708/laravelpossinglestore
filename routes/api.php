@@ -4,10 +4,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\OrderSyncController;
 use App\Http\Controllers\Api\MenuController;
-use App\Http\Controllers\Api\StripeWebController;
-use App\Http\Controllers\AuthController;
-
-
+use App\Http\Controllers\Api\v1\client\ClientAuthController;
+use App\Http\Controllers\Api\v1\client\StripeWebController;
+use App\Http\Controllers\Api\v1\staff\AuthController;
 
 /*
 |--------------------------------------------------------------------------
@@ -21,7 +20,7 @@ Route::post('/stripe/checkout-session', [StripeWebController::class, 'createChec
 Route::post('/stripe/webhook', [StripeWebController::class, 'handleWebhook']);
 
 
-// Route::post('/login', [AuthController::class, 'login']);
+Route::post('/admin/login', [AuthController::class, 'login']);
 // Route::post('/register', [AuthController::class, 'register']);
 
 /*
@@ -43,8 +42,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
 // Clients
 
-Route::post('/client/register', [AuthController::class, 'register']);
-Route::post('/client/login', [AuthController::class, 'login']);
+Route::post('/client/register', [ClientAuthController::class, 'register']);
+Route::post('/client/login', [ClientAuthController::class, 'login']);
 
 
 // 3. Protected Client Routes (Using Sanctum)
@@ -56,7 +55,7 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // Get Logged-in Client's Orders
-    Route::get('/client/orders', [AuthController::class, 'clientOrders']);
-    Route::get('/client/profile', [AuthController::class, 'clientProfile']);
-    
+    Route::get('/client/orders', [ClientAuthController::class, 'clientOrders']);
+    Route::get('/client/profile', [ClientAuthController::class, 'clientProfile']);
+
 });
