@@ -14,6 +14,9 @@ class Order extends Model
         'uuid',
         'user_id',
         'client_id',
+        'order_type',     // 🚀 Added (dine_in, takeaway, click_and_collect)
+        'customer_name',  // 🚀 Added
+        'customer_phone', // 🚀 Added
         'sequence_number',
         'subtotal_excl_vat',
         'vat_amount',
