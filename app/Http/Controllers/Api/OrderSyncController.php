@@ -49,26 +49,53 @@ class OrderSyncController extends Controller
 
         $syncedUuids = [];
         $failedUuids = [];
-        $createdOrders = []; // 🚀 1. Array to hold created order sequence numbers
+        $createdOrders = [];
 
         // 2. Process each order securely inside a Database Transaction
         foreach ($request->orders as $orderData) {
             DB::beginTransaction();
             try {
-                // Prevent duplicate processing if ticket was already synced
-                $exists = Order::where('uuid', $orderData['uuid'])->exists();
-                if ($exists) {
+                // 🚀 FIX 1: If order UUID exists, check if it was cancelled/refunded on mobile!
+                $existingOrder = Order::where('uuid', $orderData['uuid'])->first();
+                if ($existingOrder) {
+                    $incomingStatus = $orderData['preparation_status'] ?? $orderData['status'] ?? null;
+
+                    // If ticket was refunded or cancelled on the device, update MySQL & clear KDS!
+                    if ($incomingStatus === 'cancelled' || $incomingStatus === 'refunded') {
+                        $existingOrder->preparation_status = 'cancelled';
+                        $existingOrder->status = 'refunded';
+                        $existingOrder->save();
+
+                        DB::commit();
+
+                        // 🚀 FIRE REVERB -> Clears ticket from Kitchen KDS screens live!
+                        event(new KdsOrderUpdated('order_refunded', $existingOrder));
+                    } else {
+                        DB::rollBack();
+                    }
+
                     $syncedUuids[] = $orderData['uuid'];
-                    DB::rollBack();
+                    $createdOrders[] = [
+                        'uuid' => $existingOrder->uuid,
+                        'id' => $existingOrder->id,
+                        'sequence_number' => $existingOrder->sequence_number,
+                    ];
                     continue;
                 }
 
                 // 🚀 3. AUTO-CALCULATE UNBROKEN SEQUENTIAL NUMBER (1, 2, 3, 4...)
-                $lastOrder = Order::orderBy('sequence_number', 'desc')->first();
-                $sequenceNumber = $lastOrder ? ($lastOrder->sequence_number + 1) : 1;
+                $lastSeqOrder = Order::orderBy('sequence_number', 'desc')->first();
+                $sequenceNumber = $lastSeqOrder ? ($lastSeqOrder->sequence_number + 1) : 1;
 
-                // 🚀 4. CALCULATE CRYPTOGRAPHIC SHA-256 HASH CHAIN (NF525 Compliance)
-                $previousHash = $lastOrder ? $lastOrder->hash : '0000000000000000000000000000000000000000000000000000000000000000';
+                // 🚀 4. SAFELY QUERY PREVIOUS ORDER HASH FOR NF525 CHAIN CONTINUITY
+                $lastHashOrder = Order::whereNotNull('hash')
+                    ->where('hash', '!=', '')
+                    ->orderBy('sequence_number', 'desc')
+                    ->first();
+
+                $previousHash = ($lastHashOrder && !empty($lastHashOrder->hash))
+                    ? $lastHashOrder->hash
+                    : '0000000000000000000000000000000000000000000000000000000000000000';
 
                 $subtotalExclVat = (float) $orderData['subtotal_excl_vat'];
                 $vatAmount = (float) $orderData['vat_amount'];
@@ -97,8 +124,8 @@ class OrderSyncController extends Controller
                     'hash' => $finalHash,
                     'previous_hash' => $finalPreviousHash,
                     'completed_at' => $completedAt,
-                    'preparation_status' => 'pending',
-                    'status' => 'completed',
+                    'preparation_status' => $orderData['preparation_status'] ?? 'pending',
+                    'status' => $orderData['status'] ?? 'completed',
                 ]);
 
                 // 🚀 6. Create Order Items
@@ -123,16 +150,15 @@ class OrderSyncController extends Controller
 
                 DB::commit();
 
-                // 🚀 8. BROADCAST WEBSOCKET EVENT TO KITCHEN (Chef & Packer screens light up live!)
+                // 🚀 8. BROADCAST WEBSOCKET EVENT TO KITCHEN
                 event(new KdsOrderUpdated('new_orders_synced', $order));
 
                 $syncedUuids[] = $orderData['uuid'];
 
-                // 🚀 2. Store created order details for response
                 $createdOrders[] = [
                     'uuid' => $order->uuid,
                     'id' => $order->id,
-                    'sequence_number' => $order->sequence_number, // 👈 14
+                    'sequence_number' => $order->sequence_number,
                 ];
             } catch (\Exception $e) {
                 DB::rollBack();
@@ -145,8 +171,7 @@ class OrderSyncController extends Controller
             'message' => 'Synchronization complete',
             'synced_uuids' => $syncedUuids,
             'failed_uuids' => $failedUuids,
-            'orders' => $createdOrders, // 👈 SENT TO NEXT.JS!
-
+            'orders' => $createdOrders,
         ], 200);
     }
 }
