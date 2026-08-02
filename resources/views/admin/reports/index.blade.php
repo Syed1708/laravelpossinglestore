@@ -65,7 +65,7 @@
 <div class="page-header">
     <div class="page-header-row">
         <div>
-            <h1 class="page-title">📅 Rapports d'Activité & TVA</h1>
+            <h1 class="page-title">📅 Sales reports</h1>
             <p class="page-description">Filtrez et exportez vos données de vente par période.</p>
         </div>
     </div>

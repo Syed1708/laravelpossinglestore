@@ -221,8 +221,15 @@
         }
 
         @keyframes pulseNotes {
-            0%, 100% { border-color: rgba(245, 158, 11, 0.5); }
-            50% { border-color: rgba(245, 158, 11, 1); }
+
+            0%,
+            100% {
+                border-color: rgba(245, 158, 11, 0.5);
+            }
+
+            50% {
+                border-color: rgba(245, 158, 11, 1);
+            }
         }
 
         .kds-card-footer {
@@ -273,7 +280,8 @@
     <div class="kds-header">
         <h1 class="kds-title">📦 ÉCRAN COMPTOIR & EMBALLAGE (Packer)</h1>
         <div class="kds-status" id="ws-status">
-            <span style="height: 10px; width: 10px; background-color: var(--success); border-radius: 50%; display: inline-block;"></span>
+            <span
+                style="height: 10px; width: 10px; background-color: var(--success); border-radius: 50%; display: inline-block;"></span>
             Connexion Temps Réel Active (WebSockets)
         </div>
     </div>
@@ -329,7 +337,9 @@
                 console.log('[Audio Synth] Engine unlocked!');
                 playKitchenAlert();
             });
-        }, { once: true });
+        }, {
+            once: true
+        });
 
         async function fetchPackerOrders() {
             try {
@@ -364,7 +374,9 @@
                         'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': '{{ csrf_token() }}'
                     },
-                    body: JSON.stringify({ status: 'delivered' })
+                    body: JSON.stringify({
+                        status: 'delivered'
+                    })
                 });
             } catch (error) {
                 console.error('[KDS Packer] Order completion failed:', error);
@@ -408,10 +420,12 @@
                     const fullName = item.product_name || 'Article';
 
                     const hasBracketNotes = fullName.includes('[') && fullName.includes(']');
-                    const baseName = hasBracketNotes ? fullName.substring(0, fullName.indexOf('[')).trim() : fullName;
-                    const extractedNotes = hasBracketNotes 
-                        ? fullName.substring(fullName.indexOf('[') + 1, fullName.lastIndexOf(']'))
-                        : (item.notes ? (Array.isArray(item.notes) ? item.notes.join(', ') : item.notes) : null);
+                    const baseName = hasBracketNotes ? fullName.substring(0, fullName.indexOf('[')).trim() :
+                        fullName;
+                    const extractedNotes = hasBracketNotes ?
+                        fullName.substring(fullName.indexOf('[') + 1, fullName.lastIndexOf(']')) :
+                        (item.notes ? (Array.isArray(item.notes) ? item.notes.join(', ') : item.notes) :
+                            null);
 
                     return `
                         <div class="kds-item-container">
@@ -423,10 +437,10 @@
                             </div>
 
                             ${extractedNotes ? `
-                                <div class="kds-item-notes">
-                                    ⚠️ <span>${extractedNotes}</span>
-                                </div>
-                            ` : ''}
+                                    <div class="kds-item-notes">
+                                        ⚠️ <span>${extractedNotes}</span>
+                                    </div>
+                                ` : ''}
                         </div>
                     `;
                 }).join('');
@@ -499,6 +513,12 @@
             disableStats: true,
             enabledTransports: ['ws', 'wss']
         });
+
+        // 🚀 PUSHER CLOUD PRODUCTION CONNECTION
+        // const pusher = new Pusher('1f66536d3d7bb2ec0eec', {
+        //     cluster: 'eu',
+        //     forceTLS: true
+        // });
 
         const channel = pusher.subscribe('kds-channel');
 

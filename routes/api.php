@@ -20,6 +20,8 @@ use App\Http\Controllers\Api\v1\staff\AuthController;
 Route::get('/menu', [MenuController::class, 'index']); // 🚀 Moved outside auth:sanctum!
 Route::post('/stripe/checkout-session', [StripeWebController::class, 'createCheckoutSession']);
 Route::post('/stripe/webhook', [StripeWebController::class, 'handleWebhook']);
+// 🚀 Stripe Verification Endpoint (Public)
+Route::get('/checkout/verify-session', [StripeWebController::class, 'verifySession']);
 
 
 Route::post('/admin/login', [AuthController::class, 'login']);

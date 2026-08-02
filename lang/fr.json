@@ -315,5 +315,39 @@
 
 
     "Product Description": "Description du Produit",
-    "Product Image": "Image du Produit"
+    "Product Image": "Image du Produit",
+    
+  "technicalSheetsRecipes": "Fiches Techniques & Recettes",
+  "recipeCard": "Fiches Recettes",
+  "productName": "Nom du Produit",
+  "categories": "Catégorie",
+  "manageRecipe": "Gérer la Recette",
+
+  "stockDeliveries": "Livraisons Stock",
+  "supplierOrdersDeliveries": "Commandes Fournisseurs & Livraisons",
+  "supplyMonitoring": "Suivi des Approvisionnements",
+  "purchaseOrder": "Bon de Commande",
+  "suppliers": "Fournisseur",
+  "invoiceNumber": "N° Facture",
+  "totalAmountInclTax": "Montant TTC",
+  "status": "Statut",
+
+  "marginProfitability": "Marge & Rentabilité",
+  "menuEngineeringCosting": "Ingénierie de Menu & Coût de Revient",
+
+  "realTimeCostAnalysis": "Analyse en temps réel de votre coût matière, marge brute et seuil de rentabilité par produit.",
+
+  "finishedProductFinancialAnalysis": "Analyse Financière des Produits Finis",
+  "priceInclTax": "Prix (TTC)",
+  "priceExclTax": "Prix (HT)",
+  "materialCost": "Coût Matière",
+  "grossMargin": "Marge Brute (€)",
+  "marginStatus": "Statut Marge",
+
+  "kitchenDisplaySystem": "Écran Chef (KDS)",
+  "counterDisplay": "Écran Comptoir (Packer)",
+  "ingredients": "Ingrédients",
+  "expenses": "Dépenses",
+  "reportsPdf": "Rapports (PDF)"
+
 }

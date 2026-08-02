@@ -1,25 +1,25 @@
 @extends('tyro-dashboard::layouts.app')
 
-@section('title', __($config['title']))
+@section('title', $config['title'])
 
 @section('breadcrumb')
-<a href="{{ route($dashboardRoute::name('index')) }}">{{__('Dashboard')}}</a>
+<a href="{{ route($dashboardRoute::name('index')) }}">Dashboard</a>
 <span class="breadcrumb-separator">/</span>
-<span>{{ __($config['title']) }}</span>
+<span>{{ $config['title'] }}</span>
 @endsection
 
 @section('content')
 <div class="page-header">
     <div class="page-header-row">
         <div>
-            <h1 class="page-title">{{ __(__($config['title'])) }}</h1>
+            <h1 class="page-title">{{ $config['title'] }}</h1>
         </div>
         @if(!($isReadonly ?? false))
         <a href="{{ route($dashboardRoute::name('resources.create'), $resource) }}" class="btn btn-primary">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
             </svg>
-            {{ __('Add New') }}
+            Add New
         </a>
         @endif
     </div>
