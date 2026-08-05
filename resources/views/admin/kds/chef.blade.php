@@ -476,7 +476,7 @@
         const pusher = new Pusher('{{ env('REVERB_APP_KEY') }}', {
             cluster: '{{ env('REVERB_APP_CLUSTER') }}',
             wsHost: '10.178.169.244',
-            wsPort: 8080,
+            wsPort: 8080, 
             forceTLS: false,
             disableStats: true,
             enabledTransports: ['ws', 'wss']

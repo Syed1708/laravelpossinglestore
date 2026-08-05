@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\OnlineOrderController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\OrderSyncController;
@@ -74,4 +75,18 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/client/orders', [ClientAuthController::class, 'clientOrders']);
     Route::get('/client/profile', [ClientAuthController::class, 'clientProfile']);
 
+});
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/online-orders', [OnlineOrderController::class, 'getOnlineOrders']);
+    Route::post('/online-orders/{order}/accept', [OnlineOrderController::class, 'acceptOrder']);
+    Route::post('/online-orders/{order}/reject', [OnlineOrderController::class, 'rejectOrder']);
+});
+
+// Public Store Hours Status Endpoint
+Route::get('/store-status', function () {
+    return response()->json([
+        'is_open' => \App\Helpers\StoreHoursHelper::isOpen(),
+        'schedule' => \App\Helpers\StoreHoursHelper::getScheduleText(),
+    ]);
 });

@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\DailyClosureController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\KdsController;
 use App\Http\Controllers\Admin\MenuEngineeringController;
+use App\Http\Controllers\Admin\OnlineOrderController;
 use App\Http\Controllers\Admin\RecipeController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\PurchaseOrderController;
@@ -62,6 +63,10 @@ Route::middleware(['web', 'auth'])->group(function () {
 Route::middleware(['web', 'auth'])->group(function () {
     // Custom Menu Engineering & Profitability route
     Route::get('/admin/menu-engineering', [MenuEngineeringController::class, 'index'])->name('admin.menu-engineering.index');
+});
+
+Route::prefix('admin')->middleware(['auth'])->group(function () {
+    Route::get('/orders/online-management', [OnlineOrderController::class, 'index'])->name('admin.orders.online');
 });
 
 // routes/web.php

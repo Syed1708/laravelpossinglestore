@@ -10,6 +10,7 @@ use App\Models\Product;
 use App\Models\Ingredient;
 use App\Models\Recipe;
 use App\Events\KdsOrderUpdated;
+use App\Helpers\StoreHoursHelper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -25,6 +26,14 @@ class StripeWebController extends Controller
      */
     public function createCheckoutSession(Request $request)
     {
+        // 🚀 HARD BACKEND CHECK: Block checkout if restaurant is closed!
+        if (!StoreHoursHelper::isOpen()) {
+            return response()->json([
+                'error' => 'Restaurant is currently closed for online ordering.',
+                'schedule' => 'Opening Hours: ' . StoreHoursHelper::getScheduleText(),
+            ], 403);
+        }
+
         $request->validate([
             'cart' => 'required|array|min:1',
             'cart.*.id' => 'required|exists:products,id',
@@ -67,7 +76,7 @@ class StripeWebController extends Controller
                 'payment_method_types' => ['card'],
                 'line_items' => $lineItems,
                 'mode' => 'payment',
-                'success_url' => "{$frontendUrl}/client/profile?status=success&session_id={CHECKOUT_SESSION_ID}", 
+                'success_url' => "{$frontendUrl}/client/profile?status=success&session_id={CHECKOUT_SESSION_ID}",
                 'cancel_url' => "{$frontendUrl}/order?status=cancelled",
                 'metadata' => [
                     'cart' => json_encode($request->cart),
@@ -76,7 +85,6 @@ class StripeWebController extends Controller
             ]);
 
             return response()->json(['url' => $session->url], 200);
-
         } catch (\Exception $e) {
             Log::error('Stripe Session creation failed: ' . $e->getMessage());
             return response()->json([
@@ -105,7 +113,7 @@ class StripeWebController extends Controller
             $session = Session::retrieve($sessionId);
 
             if ($session->payment_status === 'paid') {
-                $metadata = (array) $session->metadata;
+                $metadata = is_object($session->metadata) ? $session->metadata->toArray() : (array) $session->metadata;
                 $cartJson = $metadata['cart'] ?? null;
                 $clientId = $metadata['client_id'] ?? null;
 
@@ -123,7 +131,6 @@ class StripeWebController extends Controller
             }
 
             return response()->json(['success' => false, 'message' => 'Payment not paid'], 400);
-
         } catch (\Exception $e) {
             Log::error('Stripe Session Verification Error: ' . $e->getMessage());
             return response()->json(['error' => $e->getMessage()], 500);
@@ -167,7 +174,7 @@ class StripeWebController extends Controller
                 return response()->json(['error' => 'Session object missing'], 400);
             }
 
-            $metadata = is_object($session->metadata) ? (array) $session->metadata : ($session['metadata'] ?? []);
+            $metadata = is_object($session->metadata) ? $session->metadata->toArray() : (array) ($session->metadata ?? []);
             $cartJson = $metadata['cart'] ?? null;
             $clientId = $metadata['client_id'] ?? null;
 
@@ -181,18 +188,20 @@ class StripeWebController extends Controller
     }
 
     /**
-     * 🚀 SHARED ORDER CREATION ENGINE (Deduplicated)
+     * 🚀 SHARED ORDER CREATION ENGINE (Deduplicated & Failsafe)
      */
     private function processOrderCreation($session, array $cart, $clientId = null)
     {
-        // 1. Prevent Duplicates: Check if order for this Stripe Session ID already exists
-        $existingPayment = Payment::where('method', 'stripe_checkout')
-            ->where('order_id', function ($q) use ($session) {
-                $q->select('id')->from('orders')->where('uuid', $session->id);
-            })->first();
+        // 1. Extract Payment Intent ID cleanly (handles string or object)
+        $paymentIntent = is_object($session) ? ($session->payment_intent ?? null) : ($session['payment_intent'] ?? null);
+        $paymentIntentId = is_object($paymentIntent) ? ($paymentIntent->id ?? null) : $paymentIntent;
 
-        if ($existingPayment) {
-            return Order::find($existingPayment->order_id);
+        // 🚀 2. DEDUPLICATION FIX: Check if order with this payment_intent_id already exists!
+        if (!empty($paymentIntentId)) {
+            $existingOrder = Order::where('payment_intent_id', $paymentIntentId)->first();
+            if ($existingOrder) {
+                return $existingOrder;
+            }
         }
 
         DB::beginTransaction();
@@ -226,7 +235,8 @@ class StripeWebController extends Controller
                 ];
             }
 
-            $lastSeqOrder = Order::orderBy('sequence_number', 'desc')->first();
+            // 🚀 3. RACE CONDITION FIX: Use lockForUpdate() on sequence number query
+            $lastSeqOrder = Order::orderBy('sequence_number', 'desc')->lockForUpdate()->first();
             $sequenceNumber = $lastSeqOrder ? ($lastSeqOrder->sequence_number + 1) : 1;
             $completedAt = Carbon::now();
 
@@ -236,9 +246,10 @@ class StripeWebController extends Controller
             $dataToHash = "{$sequenceNumber}|" . number_format($subtotalExclVat, 2, '.', '') . "|" . number_format($vatAmount, 2, '.', '') . "|" . number_format($totalInclVat, 2, '.', '') . "|{$completedAt->setTimezone('UTC')->format('Y-m-d\TH:i:s\Z')}|{$previousHash}";
             $currentHash = hash('sha256', $dataToHash);
 
-            // 1. Create Order (Uses Stripe Session ID as UUID to prevent duplicates!)
+            // 4. Create Order
             $order = Order::create([
-                'uuid' => (string) \Illuminate\Support\Str::uuid(), // 👈 36 chars max!
+                'uuid' => (string) \Illuminate\Support\Str::uuid(),
+                'payment_intent_id' => $paymentIntentId, // 🚀 Stores pi_3Tz... ID
                 'user_id' => null,
                 'client_id' => $clientId,
                 'order_type' => 'click_and_collect',
@@ -249,11 +260,11 @@ class StripeWebController extends Controller
                 'hash' => $currentHash,
                 'previous_hash' => $previousHash,
                 'completed_at' => $completedAt,
-                'preparation_status' => 'pending',
+                'preparation_status' => 'not_accepted', // 🚀 Set to unaccepted so Admin gets audio alert!
                 'status' => 'completed',
             ]);
 
-            // 2. Create Order Items & Deduct Stocks
+            // 5. Create Order Items & Deduct Stocks
             foreach ($orderItems as $item) {
                 OrderItem::create([
                     'order_id' => $order->id,
@@ -271,7 +282,7 @@ class StripeWebController extends Controller
                 }
             }
 
-            // 3. Create Payment Log
+            // 6. Create Payment Log
             Payment::create([
                 'order_id' => $order->id,
                 'amount' => $totalInclVat,
@@ -280,7 +291,7 @@ class StripeWebController extends Controller
 
             DB::commit();
 
-            // 🚀 Fire event for KDS Kitchen Screens
+            // 🚀 Fire event for Admin Online Orders Screen & KDS Kitchen Screens
             try {
                 event(new KdsOrderUpdated('new_orders_synced', $order));
             } catch (\Exception $e) {
@@ -288,7 +299,6 @@ class StripeWebController extends Controller
             }
 
             return $order;
-
         } catch (\Exception $e) {
             DB::rollback();
             Log::error('Stripe Order creation failed: ' . $e->getMessage());

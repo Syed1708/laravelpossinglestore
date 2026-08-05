@@ -71,7 +71,7 @@ return [
         'sidebar_accent' => env('TYRO_DASHBOARD_SIDEBAR_ACCENT', null), // Custom text color for sidebar
         'sidebar_accent_foreground' => env('TYRO_DASHBOARD_SIDEBAR_ACCENT_FOREGROUND', null), // Custom text color for sidebar
         'sidebar_header_border' => env('TYRO_DASHBOARD_SIDEBAR_HEADER_BORDER', null), // Custom text color for sidebar
-        'sidebar_accordion_compact' => filter_var(env('TYRO_DASHBOARD_SIDEBAR_ACCORDION_COMPACT', false), FILTER_VALIDATE_BOOLEAN),
+        'sidebar_accordion_compact' => filter_var(env('TYRO_DASHBOARD_SIDEBAR_ACCORDION_COMPACT', true), FILTER_VALIDATE_BOOLEAN),
     ],
 
     /*
@@ -207,8 +207,8 @@ return [
     |
     */
     'resources' => [
-  
- 
+
+
         // 'stores' => [
         //     'model' => 'App\Models\Store',
         //     'title' => 'Boutiques (Stores)',
@@ -223,8 +223,35 @@ return [
         //         'vat_number' => ['type' => 'text', 'label' => 'Numéro de TVA Intracom', 'rules' => 'nullable|max:20'],
         //     ]
         // ],
+        // ==========================================
+        // 🚀 1. DISPLAY & POS GROUP (Custom Links)
+        // ==========================================
+        'web_pos' => [
+            'group'  => 'Display & POS',
+            'title'  => '⌨️ Web POS Terminal',
+            'url'    => '/pos',
+            'target' => '_blank',
+            'icon'   => '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.559c.211.135.442.2.673.2.226 0 .453-.064.661-.19a1.122 1.122 0 00.465-.916c0-.528-.4-.954-.925-1.042l-.4-.067c-.525-.088-.925-.514-.925-1.042 0-.376.183-.728.497-.918a1.121 1.121 0 011.077-.14l.879.56M12 3v18" /></svg>',
+        ],
+
+        'kds_chef' => [
+            'group'  => 'Display & POS',
+            'title'  => '👨‍🍳 Chef Screen (KDS)',
+            'route'  => 'admin.kds.chef',
+            'target' => '_blank',
+            'icon'   => '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m3.75 9v6m3-3H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>',
+        ],
+
+        'kds_packer' => [
+            'group'  => 'Display & POS',
+            'title'  => '📦 Cashier/Packer Screen',
+            'route'  => 'admin.kds.packer',
+            'target' => '_blank',
+            'icon'   => '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25M19.5 3H4.5A1.5 1.5 0 003 4.5v3a1.5 1.5 0 001.5 1.5h15A1.5 1.5 0 0021 7.5v-3A1.5 1.5 0 0019.5 3z" /></svg>',
+        ],
 
         'categories' => [
+            'group' => 'Customer Management',
             'model' => 'App\Models\Category',
             'title' => 'Categories',
             'roles' => ['admin', 'super-admin'],
@@ -236,6 +263,7 @@ return [
         ],
 
         'products' => [
+            'group' => 'Customer Management',
             'model' => 'App\Models\Product',
             'title' => 'Products',
             'roles' => ['admin', 'super-admin'],
@@ -287,6 +315,7 @@ return [
         ],
         // 🚀 3. Orders Resource (Strictly Read-Only)
         'orders' => [
+            'group' => 'Manage Orders',
             'model' => 'App\Models\Order',
             'title' => 'Orders (Sales Archive)',
 
@@ -323,9 +352,17 @@ return [
                 ],
             ],
         ],
+        'online_orders_management' => [
+            'group'  => 'Manage Orders',
+            'title'  => '🔔 Online Orders',
+            'route'  => 'admin.orders.online',
+            'target' => '_blank',
+            'icon'   => '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" /></svg>',
+        ],
 
         // 🚀 4. Z-Reports Archiving Resource (View-only for everyone!)
         'daily_closures' => [
+            'group' => 'Customer Management',
             'model' => 'App\Models\DailyClosure',
             'title' => 'Z-Reports (End-of-Day Closures)',
 
@@ -359,6 +396,8 @@ return [
 
         // 🚀 NEW: Suppliers Resource (Module 3)
         'suppliers' => [
+            'group' => 'Customer Management', // 🚀 Group Header
+
             'model' => 'App\Models\Supplier',
             'title' => 'Suppliers',
             'roles' => ['admin', 'super-admin'],
@@ -373,6 +412,7 @@ return [
         ],
 
         'ingredients' => [
+            'group' => 'Customer Management', // 🚀 Group Header
             'model' => 'App\Models\Ingredient',
             'title' => 'Ingredients (Stocks)',
             'roles' => ['admin', 'super-admin'], // Restrict access to admins only
@@ -500,7 +540,7 @@ return [
 
 
     ],
-  
+
 
     /*
     |--------------------------------------------------------------------------

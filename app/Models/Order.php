@@ -12,6 +12,7 @@ class Order extends Model
 
     protected $fillable = [
         'uuid',
+        'payment_intent_id',
         'user_id',
         'client_id',
         'order_type',     // 🚀 Added (dine_in, takeaway, click_and_collect)
@@ -24,8 +25,10 @@ class Order extends Model
         'hash',
         'previous_hash',
         'status',
-        'preparation_status',
-        'completed_at'
+        'completed_at',
+        'preparation_status', // 'not_accepted', 'accepted', 'preparing', 'ready', 'delivered', 'cancelled'
+        'estimated_prep_time', // 🚀 Added (minutes)
+        'estimated_ready_at',   // 🚀 Added (datetime)
     ];
 
     protected $casts = [

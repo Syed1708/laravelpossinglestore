@@ -49,16 +49,16 @@
             </a>
 
             <!-- Web POS Launch Link -->
-            {{-- <a href="/pos" target="_blank" class="sidebar-link">
+            <a href="/pos" target="_blank" class="sidebar-link">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.559c.211.135.442.2.673.2.226 0 .453-.064.661-.19a1.122 1.122 0 00.465-.916c0-.528-.4-.954-.925-1.042l-.4-.067c-.525-.088-.925-.514-.925-1.042 0-.376.183-.728.497-.918a1.121 1.121 0 011.077-.14l.879.56M12 3v18" />
                 </svg>
                 ⌨️ Web POS Terminal
-            </a> --}}
+            </a>
         </div>
 
         <!-- 2. KITCHEN & POS DISPLAYS -->
-        {{-- <div class="sidebar-section">
+        <div class="sidebar-section">
             <div class="sidebar-section-title">Kitchen & POS Display</div>
             <a href="{{ route('admin.kds.chef') }}" target="_blank" class="sidebar-link">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -73,10 +73,10 @@
                 </svg>
                 📦 Cashier/Packer Screen
             </a>
-        </div> --}}
+        </div>
 
         <!-- 🚀 3. DYNAMICALLY GROUPED RESOURCES BY 'group' KEY -->
-        {{-- @php
+        @php
             $resourcesByGroup = [];
             $rawResources = $allResources ?? config('tyro-dashboard.resources', []);
             foreach ($rawResources as $key => $resource) {
@@ -130,72 +130,7 @@
                     @endif
                 @endforeach
             </div>
-        @endforeach --}}
-
-                <!-- 🚀 DYNAMICALLY GROUPED SECTIONS FROM config('tyro-dashboard.resources') -->
-        @php
-            $resourcesByGroup = [];
-            $rawResources = $allResources ?? config('tyro-dashboard.resources', []);
-            foreach ($rawResources as $key => $resource) {
-                $groupName = $resource['group'] ?? 'Resources';
-                $resourcesByGroup[$groupName][$key] = $resource;
-            }
-        @endphp
-
-        @foreach ($resourcesByGroup as $groupName => $groupResources)
-            <div class="sidebar-section">
-                <div class="sidebar-section-title">{{ $groupName }}</div>
-                @foreach ($groupResources as $key => $resource)
-                    @php
-                        // Check if item is a custom URL, a named route, or a CRUD resource
-                        if (isset($resource['url'])) {
-                            $linkUrl = $resource['url'];
-                            $isActive = request()->is(ltrim($resource['url'], '/') . '*');
-                        } elseif (isset($resource['route'])) {
-                            $linkUrl = route($resource['route']);
-                            $isActive = request()->routeIs($resource['route'] . '*');
-                        } else {
-                            $linkUrl = route($dashboardRoute::name('resources.index'), $key);
-                            $isActive = request()->is('*resources/' . $key . '*');
-                        }
-
-                        $target = $resource['target'] ?? '_self';
-
-                        // Permission check
-                        $canAccess = true;
-                        if (isset($resource['roles']) && !empty($resource['roles'])) {
-                            $canAccess = false;
-                            $user = auth()->user();
-                            if ($user && method_exists($user, 'tyroRoleSlugs')) {
-                                $userRoles = $user->tyroRoleSlugs();
-                                foreach ($resource['roles'] as $role) {
-                                    if (in_array($role, $userRoles)) {
-                                        $canAccess = true;
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                    @endphp
-
-                    @if ($canAccess)
-                        <a href="{{ $linkUrl }}" target="{{ $target }}"
-                            class="sidebar-link {{ $isActive ? 'active' : '' }}">
-                            @if (isset($resource['icon']))
-                                {!! $resource['icon'] !!}
-                            @else
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                        d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                                </svg>
-                            @endif
-                            {{ $resource['title'] }}
-                        </a>
-                    @endif
-                @endforeach
-            </div>
         @endforeach
-
 
         <!-- 4. ADMINISTRATION SECTION -->
         <div class="sidebar-section">
