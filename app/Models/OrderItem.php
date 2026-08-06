@@ -15,7 +15,8 @@ class OrderItem extends Model
         'unit_price',
         'vat_rate',
         'subtotal',
-        'item_status'
+        'item_status',
+        'notes', // 🚀 Added
     ];
     protected static function booted(): void
     {
@@ -38,6 +39,7 @@ class OrderItem extends Model
         'unit_price' => 'decimal:2',
         'vat_rate' => 'decimal:2',
         'subtotal' => 'decimal:2',
+        'notes' => 'array',
     ];
 
     public function order(): BelongsTo

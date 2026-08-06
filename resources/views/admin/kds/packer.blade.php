@@ -397,89 +397,119 @@
 
             workspace.innerHTML = activeOrdersList.map(order => {
                 const allItemsDone = order.items.every(item => item.item_status === 'done');
-                const isTakeaway = (order.order_type || order.orderType) === 'takeaway';
-                const customerName = order.customer_name || order.customerName || null;
+                const orderType = (order.order_type || order.orderType || '').toLowerCase();
+
+                const isOnline = orderType === 'click_and_collect' || orderType === 'online';
+                const isTakeaway = orderType === 'takeaway' || isOnline;
+                
+                // 🚀 Customer Name Fallback
+                const customerName = order.customer_name || (order.client ? order.client.name : 'Web Customer');
+
+                let badgeLabel = '🍽️ DINE-IN';
+                if (isOnline) {
+                    badgeLabel = '🛍️ ONLINE ORDER (TAKEAWAY)';
+                } else if (isTakeaway) {
+                    badgeLabel = '🛍️ TAKEAWAY';
+                }
 
                 const isKitchenReady = !order.has_kitchen_items || order.preparation_status === 'ready';
 
+                // 🚀 ENGLISH KITCHEN STATUS BANNERS
                 let statusClass = 'status-pending';
-                let statusLabel = 'Attente Cuisine ⏳';
+                let statusLabel = 'Waiting for Kitchen ⏳';
 
                 if (!order.has_kitchen_items) {
                     statusClass = 'status-no-kitchen';
-                    statusLabel = 'Boissons Uniquement 🥤';
+                    statusLabel = 'Drinks / Direct Items Only 🥤';
                 } else if (order.preparation_status === 'preparing') {
                     statusClass = 'status-preparing';
-                    statusLabel = 'Cuisine : En Préparation 🔥';
+                    statusLabel = 'Kitchen: In Preparation 🔥';
                 } else if (order.preparation_status === 'ready') {
                     statusClass = 'status-ready';
-                    statusLabel = 'Cuisine : PRÊT ✔️';
+                    statusLabel = 'Kitchen: READY ✔️';
                 }
 
                 const itemsHtml = order.items.map(item => {
-                    const fullName = item.product_name || 'Article';
+                    const rawName = item.product_name || 'Item';
 
-                    const hasBracketNotes = fullName.includes('[') && fullName.includes(']');
-                    const baseName = hasBracketNotes ? fullName.substring(0, fullName.indexOf('[')).trim() :
-                        fullName;
-                    const extractedNotes = hasBracketNotes ?
-                        fullName.substring(fullName.indexOf('[') + 1, fullName.lastIndexOf(']')) :
-                        (item.notes ? (Array.isArray(item.notes) ? item.notes.join(', ') : item.notes) :
-                            null);
+                    // 🚀 1. Clean product name (strips legacy bracketed notes if present)
+                    const cleanName = rawName.includes('[') ?
+                        rawName.substring(0, rawName.indexOf('[')).trim() :
+                        rawName;
+
+                    // 🚀 2. Extract & Format Notes cleanly from DB notes column (Array or JSON)
+                    let formattedNotes = null;
+
+                    if (item.notes) {
+                        if (Array.isArray(item.notes)) {
+                            formattedNotes = item.notes.join(' | ');
+                        } else if (typeof item.notes === 'string' && item.notes.trim() !== '') {
+                            try {
+                                const parsed = JSON.parse(item.notes);
+                                formattedNotes = Array.isArray(parsed) ? parsed.join(' | ') : item.notes;
+                            } catch (e) {
+                                formattedNotes = item.notes;
+                            }
+                        }
+                    } else if (rawName.includes('[') && rawName.includes(']')) {
+                        // Fallback for legacy bracketed names
+                        formattedNotes = rawName.substring(rawName.indexOf('[') + 1, rawName.lastIndexOf(
+                            ']'));
+                    }
 
                     return `
-                        <div class="kds-item-container">
-                            <div class="kds-item-row ${item.item_status === 'done' ? 'kds-item-row-done' : ''}" onclick="toggleItemCheckbox(${item.id})">
-                                <span class="kds-item-qty">${item.quantity}</span>
-                                <span class="kds-item-name">
-                                    ${item.item_status === 'done' ? '✅' : '⬜'} ${baseName}
-                                </span>
-                            </div>
+            <div class="kds-item-container">
+                <div class="kds-item-row ${item.item_status === 'done' ? 'kds-item-row-done' : ''}" onclick="toggleItemCheckbox(${item.id})">
+                    <span class="kds-item-qty">${item.quantity}</span>
+                    <span class="kds-item-name">
+                        ${item.item_status === 'done' ? '✅' : '⬜'} ${cleanName}
+                    </span>
+                </div>
 
-                            ${extractedNotes ? `
-                                    <div class="kds-item-notes">
-                                        ⚠️ <span>${extractedNotes}</span>
-                                    </div>
-                                ` : ''}
+                ${formattedNotes ? `
+                        <div class="kds-item-notes">
+                            ⚠️ <span>${formattedNotes}</span>
                         </div>
-                    `;
+                    ` : ''}
+            </div>
+        `;
                 }).join('');
 
                 const canComplete = isKitchenReady && allItemsDone;
 
                 return `
-                    <div class="kds-card" id="card-${order.id}">
-                        <div class="kds-card-header">
-                            <div>
-                                <span class="kds-ticket-num">TICKET #${order.sequence_number || order.id}</span>
-                                ${customerName ? `<div class="kds-customer-name">Client: ${customerName}</div>` : ''}
-                            </div>
-                            <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 6px;">
-                                <span class="${isTakeaway ? 'kds-badge-takeaway' : 'kds-badge-dinein'}">
-                                    ${isTakeaway ? '🛍️ À EMPORTER' : '🍽️ SUR PLACE'}
-                                </span>
-                                <span class="kds-timer kds-timer-clock" data-completed-at="${order.completed_at}">00:00:00</span>
-                            </div>
-                        </div>
-                        
-                        <div class="kitchen-status-banner ${statusClass}">
-                            ${statusLabel}
-                        </div>
+        <div class="kds-card" id="card-${order.id}">
+            <div class="kds-card-header">
+                <div>
+                    <span class="kds-ticket-num">TICKET #${order.sequence_number || order.id}</span>
+                    ${customerName ? `<div class="kds-customer-name">Customer: ${customerName}</div>` : ''}
+                </div>
+                <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 6px;">
+                    <span class="${isTakeaway ? 'kds-badge-takeaway' : 'kds-badge-dinein'}">
+                        ${isTakeaway ? '🛍️ TAKEAWAY' : '🍽️ DINE-IN'}
+                    </span>
+                    <span class="kds-timer kds-timer-clock" data-completed-at="${order.completed_at}">00:00:00</span>
+                </div>
+            </div>
+            
+            <div class="kitchen-status-banner ${statusClass}">
+                ${statusLabel}
+            </div>
 
-                        <div class="kds-card-body">
-                            ${itemsHtml}
-                        </div>
+            <div class="kds-card-body">
+                ${itemsHtml}
+            </div>
 
-                        <div class="kds-card-footer">
-                            <button class="kds-btn kds-btn-complete" 
-                                    style="${!canComplete ? 'background-color: var(--border); cursor: not-allowed; opacity: 0.5; color: var(--text-muted);' : ''}"
-                                    ${!canComplete ? 'disabled' : ''}
-                                    onclick="completeOrder(${order.id})">
-                                🎁 COMPLÉTER (Servi)
-                            </button>
-                        </div>
-                    </div>
-                `;
+            <div class="kds-card-footer">
+                <button class="kds-btn kds-btn-complete" 
+                        style="${!canComplete ? 'background-color: var(--border); cursor: not-allowed; opacity: 0.5; color: var(--text-muted);' : ''}"
+                        ${!canComplete ? 'disabled' : ''}
+                        onclick="completeOrder(${order.id})">
+                    🎁 COMPLETE ORDER (Served)
+                </button>
+            </div>
+        </div>
+    `;
             }).join('');
 
             updateAllClocks();
@@ -507,7 +537,7 @@
 
         const pusher = new Pusher('{{ env('REVERB_APP_KEY') }}', {
             cluster: '{{ env('REVERB_APP_CLUSTER') }}',
-            wsHost: '10.178.169.244',
+            wsHost: '127.0.0.1',
             wsPort: 8080,
             forceTLS: false,
             disableStats: true,

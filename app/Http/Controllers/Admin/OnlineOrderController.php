@@ -12,23 +12,55 @@ use Illuminate\Support\Facades\DB;
 class OnlineOrderController extends Controller
 {
     public function index()
+
     {
         return view('admin.orders.online');
     }
 
+
+
     /**
-     * API: Get all active online orders for the admin management screen
+     * API: Get active online orders + cumulative daily statistics
      */
     public function getOnlineOrders()
     {
-        $orders = Order::whereIn('preparation_status', ['not_accepted', 'accepted', 'preparing', 'ready'])
+        // 🚀 TIMEZONE FIX: Get exact start of today in Paris (00:00:00 Europe/Paris)
+        $startOfToday = Carbon::now('Europe/Paris')->startOfDay();
+
+        // 1. Active orders for the dispatcher grid
+        $activeOrders = Order::whereIn('preparation_status', ['not_accepted', 'accepted', 'preparing', 'ready'])
             ->where('order_type', 'click_and_collect')
             ->with(['items', 'client'])
             ->latest()
             ->get();
 
-        return response()->json($orders);
-    }
+    // 🚀 2. ALL today's online orders (Timezone-safe query)
+    $todayOnlineOrders = Order::where('created_at', '>=', $startOfToday)
+        ->where('order_type', 'click_and_collect')
+        ->whereNotIn('status', ['refunded', 'cancelled'])
+        ->where('preparation_status', '!=', 'cancelled')
+        ->get();
+
+    $totalCount = $todayOnlineOrders->count();
+    $completedCount = $todayOnlineOrders->whereIn('preparation_status', ['delivered', 'completed', 'served'])->count();
+    
+    // 🚀 3. Calculate total revenue dynamically with column fallback
+    $todayRevenue = $todayOnlineOrders->sum(function ($order) {
+        return (float) ($order->total_incl_vat ?? $order->total_amount ?? 0);
+    });
+
+    return response()->json([
+        'orders' => $activeOrders,
+        'stats'  => [
+            'total'     => $totalCount,
+            'pending'   => $activeOrders->where('preparation_status', 'not_accepted')->count(),
+            'kitchen'   => $activeOrders->whereIn('preparation_status', ['accepted', 'preparing'])->count(),
+            'ready'     => $activeOrders->where('preparation_status', 'ready')->count(),
+            'completed' => $completedCount,
+            'revenue'   => round((float) $todayRevenue, 2), // 🚀 Exact daily total!
+        ]
+    ]);
+}
 
     /**
      * API: Admin Accept Online Order & Set Preparation Time (15m, 30m, 45m)
@@ -40,7 +72,10 @@ class OnlineOrderController extends Controller
         ]);
 
         $prepTimeMins = (int) $request->prep_time;
-        $estimatedReadyAt = Carbon::now()->addMinutes($prepTimeMins);
+
+        // 🚀 TIMEZONE FIX: Explicitly use Europe/Paris timezone
+        $now = Carbon::now('Europe/Paris');
+        $estimatedReadyAt = (clone $now)->addMinutes($prepTimeMins);
 
         $order->update([
             'preparation_status' => 'accepted',

@@ -26,7 +26,7 @@ class KdsController extends Controller
      */
     public function getChefOrders()
     {
-        $orders = Order::whereIn('preparation_status', ['pending', 'preparing'])
+        $orders = Order::whereIn('preparation_status', ['accepted', 'pending', 'preparing'])
             ->with(['items' => function ($query) {
                 $query->whereHas('product.category', function ($subQuery) {
                     $subQuery->where('name', '!=', 'Boissons Gazeuses')
@@ -49,7 +49,7 @@ class KdsController extends Controller
      */
     public function getPackerOrders()
     {
-        $orders = Order::whereIn('preparation_status', ['pending', 'preparing', 'ready'])
+        $orders = Order::whereIn('preparation_status', ['accepted', 'pending', 'preparing', 'ready'])
             ->with('items.product.category')
             ->orderBy('completed_at', 'asc')
             ->get();

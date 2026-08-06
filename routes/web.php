@@ -67,6 +67,15 @@ Route::middleware(['web', 'auth'])->group(function () {
 
 Route::prefix('admin')->middleware(['auth'])->group(function () {
     Route::get('/orders/online-management', [OnlineOrderController::class, 'index'])->name('admin.orders.online');
+    Route::get('/orders/online-grid', function () {
+    return view('admin.orders.onlinegrid');
+    })->name('admin.orders.online-grid');
+
+    // 🚀 Admin API Endpoints (Authorized via Web Session Cookie)
+    Route::get('/api/online-orders', [OnlineOrderController::class, 'getOnlineOrders']);
+    Route::post('/api/online-orders/{order}/accept', [OnlineOrderController::class, 'acceptOrder']);
+    Route::post('/api/online-orders/{order}/reject', [OnlineOrderController::class, 'rejectOrder']);
+
 });
 
 // routes/web.php

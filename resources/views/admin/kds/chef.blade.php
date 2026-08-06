@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
-    <title>👨‍🍳 Écran Chef (KDS)</title>
+    <title>👨‍🍳 Chef Screen (KDS)</title>
     <!-- Include Pusher JS -->
     <script src="https://js.pusher.com/8.0.1/pusher.min.js"></script>
     <style>
@@ -138,7 +138,6 @@
             overflow-y: auto;
         }
 
-        /* 🚀 ITEM CONTAINER & BRIGHT YELLOW KITCHEN NOTES BOX */
         .kds-item-container {
             margin-bottom: 12px;
             padding-bottom: 8px;
@@ -194,15 +193,8 @@
         }
 
         @keyframes pulseNotes {
-
-            0%,
-            100% {
-                border-color: rgba(245, 158, 11, 0.5);
-            }
-
-            50% {
-                border-color: rgba(245, 158, 11, 1);
-            }
+            0%, 100% { border-color: rgba(245, 158, 11, 0.5); }
+            50% { border-color: rgba(245, 158, 11, 1); }
         }
 
         .kds-card-footer {
@@ -222,9 +214,7 @@
             transition: opacity 0.15s ease;
         }
 
-        .kds-btn:hover {
-            opacity: 0.9;
-        }
+        .kds-btn:hover { opacity: 0.9; }
 
         .kds-btn-start {
             background-color: var(--warning);
@@ -257,11 +247,10 @@
 <body>
 
     <div class="kds-header">
-        <h1 class="kds-title">👨‍🍳 ÉCRAN CHEF CUISINE (KDS)</h1>
+        <h1 class="kds-title">👨‍🍳 CHEF KITCHEN SCREEN (KDS)</h1>
         <div class="kds-status" id="ws-status">
-            <span
-                style="height: 10px; width: 10px; background-color: var(--success); border-radius: 50%; display: inline-block;"></span>
-            Connexion active (WebSockets)
+            <span style="height: 10px; width: 10px; background-color: var(--success); border-radius: 50%; display: inline-block;"></span>
+            Active Connection (WebSockets)
         </div>
     </div>
 
@@ -275,15 +264,12 @@
         const workspace = document.getElementById('kds-workspace');
         const wsStatus = document.getElementById('ws-status');
         let activeOrdersList = [];
-
         let audioCtx = null;
 
         function playKitchenAlert() {
             try {
                 const AudioContext = window.AudioContext || window.webkitAudioContext;
-                if (!audioCtx) {
-                    audioCtx = new AudioContext();
-                }
+                if (!audioCtx) audioCtx = new AudioContext();
                 playSyntheticBeep(880.00, 0.08, 0);
                 playSyntheticBeep(1046.50, 0.12, 0.10);
             } catch (error) {
@@ -316,9 +302,7 @@
                 console.log('[Audio Synth] Engine unlocked!');
                 playKitchenAlert();
             });
-        }, {
-            once: true
-        });
+        }, { once: true });
 
         async function fetchChefOrders() {
             try {
@@ -353,9 +337,7 @@
                         'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': '{{ csrf_token() }}'
                     },
-                    body: JSON.stringify({
-                        status: newStatus
-                    })
+                    body: JSON.stringify({ status: newStatus })
                 });
             } catch (error) {
                 console.error('[KDS Chef] Status update failed:', error);
@@ -367,8 +349,8 @@
                 workspace.innerHTML = `
                     <div class="empty-kds">
                         <div class="empty-icon">🍔</div>
-                        <h2>Aucune commande en cuisine !</h2>
-                        <p>Détendez-vous ou nettoyez vos plans de travail.</p>
+                        <h2>No active orders in the kitchen!</h2>
+                        <p>Take a break or clean your station.</p>
                     </div>
                 `;
                 return;
@@ -376,43 +358,67 @@
 
             workspace.innerHTML = activeOrdersList.map(order => {
                 const allItemsDone = order.items.every(item => item.item_status === 'done');
-                const isTakeaway = (order.order_type || order.orderType) === 'takeaway';
-                const customerName = order.customer_name || order.customerName || null;
+                const orderType = (order.order_type || order.orderType || '').toLowerCase();
+
+                const isOnline = orderType === 'click_and_collect' || orderType === 'online';
+                const isTakeaway = orderType === 'takeaway' || isOnline;
+                
+                // 🚀 Customer Name Fallback
+                const customerName = order.customer_name || (order.client ? order.client.name : 'Web Customer');
+
+                let badgeLabel = '🍽️ DINE-IN';
+                if (isOnline) {
+                    badgeLabel = '🛍️ ONLINE ORDER (TAKEAWAY)';
+                } else if (isTakeaway) {
+                    badgeLabel = '🛍️ TAKEAWAY';
+                }
 
                 const itemsHtml = order.items.map(item => {
-                    const fullName = item.product_name || 'Article';
+                    const rawName = item.product_name || 'Item';
 
-                    const hasBracketNotes = fullName.includes('[') && fullName.includes(']');
-                    const baseName = hasBracketNotes ? fullName.substring(0, fullName.indexOf('[')).trim() :
-                        fullName;
-                    const extractedNotes = hasBracketNotes ?
-                        fullName.substring(fullName.indexOf('[') + 1, fullName.lastIndexOf(']')) :
-                        (item.notes ? (Array.isArray(item.notes) ? item.notes.join(', ') : item.notes) :
-                            null);
+                    const cleanName = rawName.includes('[') ?
+                        rawName.substring(0, rawName.indexOf('[')).trim() :
+                        rawName;
+
+                    let formattedNotes = null;
+                    if (item.notes) {
+                        if (Array.isArray(item.notes)) {
+                            formattedNotes = item.notes.join(' | ');
+                        } else if (typeof item.notes === 'string' && item.notes.trim() !== '') {
+                            try {
+                                const parsed = JSON.parse(item.notes);
+                                formattedNotes = Array.isArray(parsed) ? parsed.join(' | ') : item.notes;
+                            } catch (e) {
+                                formattedNotes = item.notes;
+                            }
+                        }
+                    } else if (rawName.includes('[') && rawName.includes(']')) {
+                        formattedNotes = rawName.substring(rawName.indexOf('[') + 1, rawName.lastIndexOf(']'));
+                    }
 
                     return `
                         <div class="kds-item-container">
                             <div class="kds-item-row ${item.item_status === 'done' ? 'kds-item-row-done' : ''}" onclick="toggleItemCheckbox(${item.id})">
                                 <span class="kds-item-qty">${item.quantity}</span>
                                 <span class="kds-item-name">
-                                    ${item.item_status === 'done' ? '✅' : '⬜'} ${baseName}
+                                    ${item.item_status === 'done' ? '✅' : '⬜'} ${cleanName}
                                 </span>
                             </div>
 
-                            ${extractedNotes ? `
-                                    <div class="kds-item-notes">
-                                        ⚠️ <span>${extractedNotes}</span>
-                                    </div>
-                                ` : ''}
+                            ${formattedNotes ? `
+                                <div class="kds-item-notes">
+                                    ⚠️ <span>${formattedNotes}</span>
+                                </div>
+                            ` : ''}
                         </div>
                     `;
                 }).join('');
 
                 let footerButton = '';
-                if (order.preparation_status === 'pending') {
+                if (order.preparation_status === 'pending' || order.preparation_status === 'accepted') {
                     footerButton = `
                         <button class="kds-btn kds-btn-start" onclick="updateOrderStatus(${order.id}, 'preparing')">
-                            🔥 Commencer la Préparation
+                            🔥 Start Preparation
                         </button>
                     `;
                 } else if (order.preparation_status === 'preparing') {
@@ -421,21 +427,22 @@
                                 style="${!allItemsDone ? 'background-color: var(--border); cursor: not-allowed; opacity: 0.5; color: var(--text-muted);' : ''}"
                                 ${!allItemsDone ? 'disabled' : ''}
                                 onclick="updateOrderStatus(${order.id}, 'ready')">
-                            ✔️ Prêt (Ready)
+                            ✔️ Mark Ready
                         </button>
                     `;
                 }
 
+                // 🚀 FIX: CLEAN CARD TEMPLATE STRING
                 return `
                     <div class="kds-card" id="card-${order.id}">
                         <div class="kds-card-header">
                             <div>
-                                <span class="kds-ticket-num">TICKET #${order.sequence_number || order.id}</span>
-                                ${customerName ? `<div class="kds-customer-name">Client: ${customerName}</div>` : ''}
+                                <div class="kds-ticket-num">TICKET #${order.sequence_number || order.id}</div>
+                                <div class="kds-customer-name">👤 Customer: ${customerName}</div>
                             </div>
                             <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 6px;">
                                 <span class="${isTakeaway ? 'kds-badge-takeaway' : 'kds-badge-dinein'}">
-                                    ${isTakeaway ? '🛍️ À EMPORTER' : '🍽️ SUR PLACE'}
+                                    ${badgeLabel}
                                 </span>
                                 <span class="kds-timer kds-timer-clock" data-completed-at="${order.completed_at}">00:00:00</span>
                             </div>
@@ -473,30 +480,23 @@
             });
         }
 
+        // WebSockets Reverb Listener
         const pusher = new Pusher('{{ env('REVERB_APP_KEY') }}', {
-            cluster: '{{ env('REVERB_APP_CLUSTER') }}',
-            wsHost: '10.178.169.244',
-            wsPort: 8080, 
+            cluster: '{{ env('REVERB_APP_CLUSTER', 'mt1') }}',
+            wsHost: '{{ env('REVERB_HOST', '127.0.0.1') }}',
+            wsPort: {{ env('REVERB_PORT', 8080) }},
             forceTLS: false,
             disableStats: true,
             enabledTransports: ['ws', 'wss']
         });
-        // connect without pusher
-        // 🚀 PUSHER CLOUD PRODUCTION CONNECTION
-        // const pusher = new Pusher('1f66536d3d7bb2ec0eec', {
-        //     cluster: 'eu',
-        //     forceTLS: true
-        // });
 
         const channel = pusher.subscribe('kds-channel');
 
         channel.bind('order-event', function(data) {
-            console.log('[WebSocket] Live event received:', data.message);
-
+            console.log('[WebSocket] Live event received:', data);
             if (data.message === 'new_orders_synced') {
                 playKitchenAlert();
             }
-
             fetchChefOrders();
         });
 

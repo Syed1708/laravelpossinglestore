@@ -53,17 +53,21 @@ class StripeWebController extends Controller
 
             $lineItems = [];
 
+
             foreach ($request->cart as $itemData) {
                 $product = Product::findOrFail($itemData['id']);
-                $price = $product->price ?? $product->unit_price ?? 0;
+
+                $basePrice = (float) ($product->price ?? $product->unit_price ?? 0);
+                $extraPrice = (float) ($itemData['extraPrice'] ?? 0);
+                $finalUnitPrice = $basePrice + $extraPrice; // 🚀 Base price + paid extras!
 
                 $lineItems[] = [
                     'price_data' => [
                         'currency' => 'eur',
                         'product_data' => [
-                            'name' => $product->name,
+                            'name' => $product->name . (!empty($itemData['notes']) ? ' (' . implode(', ', $itemData['notes']) . ')' : ''),
                         ],
-                        'unit_amount' => (int) round($price * 100),
+                        'unit_amount' => (int) round($finalUnitPrice * 100),
                     ],
                     'quantity' => $itemData['quantity'],
                 ];
@@ -190,17 +194,32 @@ class StripeWebController extends Controller
     /**
      * 🚀 SHARED ORDER CREATION ENGINE (Deduplicated & Failsafe)
      */
+    /**
+     * 🚀 SHARED ORDER CREATION ENGINE (With Extra Price & Notes Support)
+     */
     private function processOrderCreation($session, array $cart, $clientId = null)
     {
-        // 1. Extract Payment Intent ID cleanly (handles string or object)
+        // 1. Extract Payment Intent ID
         $paymentIntent = is_object($session) ? ($session->payment_intent ?? null) : ($session['payment_intent'] ?? null);
         $paymentIntentId = is_object($paymentIntent) ? ($paymentIntent->id ?? null) : $paymentIntent;
 
-        // 🚀 2. DEDUPLICATION FIX: Check if order with this payment_intent_id already exists!
+        // 2. Deduplication Check
         if (!empty($paymentIntentId)) {
             $existingOrder = Order::where('payment_intent_id', $paymentIntentId)->first();
             if ($existingOrder) {
                 return $existingOrder;
+            }
+        }
+
+        // 3. Fetch Customer Details
+        $clientName = 'Web Customer';
+        $clientPhone = null;
+
+        if ($clientId) {
+            $client = \App\Models\Client::find($clientId);
+            if ($client) {
+                $clientName = $client->name;
+                $clientPhone = $client->phone ?? null;
             }
         }
 
@@ -211,13 +230,20 @@ class StripeWebController extends Controller
             $totalInclVat = 0;
             $orderItems = [];
 
+            // 🚀 4. CALCULATE LINE ITEMS WITH EXTRAS
             foreach ($cart as $itemData) {
                 $product = Product::findOrFail($itemData['id']);
                 $quantity = (int) $itemData['quantity'];
-                $price = (float) ($product->price ?? $product->unit_price ?? 0);
+
+                // 🚀 STEP A: Calculate Base Price + Extra Price from Item Modifier Modal
+                $basePrice = (float) ($product->price ?? $product->unit_price ?? 0);
+                $extraPrice = (float) ($itemData['extraPrice'] ?? 0);
+                $unitPriceWithExtras = $basePrice + $extraPrice; // e.g. €10.00 + €1.50 = €11.50
+
                 $vatRate = (float) ($product->vat_rate ?? 10.0);
 
-                $itemTotalTtc = $price * $quantity;
+                // 🚀 STEP B: Calculate HT & TVA using unit price with extras
+                $itemTotalTtc = $unitPriceWithExtras * $quantity;
                 $itemSubtotalHt = $itemTotalTtc / (1 + ($vatRate / 100));
                 $itemVat = $itemTotalTtc - $itemSubtotalHt;
 
@@ -226,72 +252,79 @@ class StripeWebController extends Controller
                 $totalInclVat += $itemTotalTtc;
 
                 $orderItems[] = [
-                    'product_id' => $product->id,
+                    'product_id'   => $product->id,
                     'product_name' => $product->name,
-                    'quantity' => $quantity,
-                    'unit_price' => $price,
-                    'vat_rate' => $vatRate,
-                    'subtotal' => $itemTotalTtc,
+                    'notes'        => $itemData['notes'] ?? null,  // 🚀 Kitchen instructions array
+                    'quantity'     => $quantity,
+                    'unit_price'   => $unitPriceWithExtras,        // 🚀 Saved with extra price!
+                    'vat_rate'     => $vatRate,
+                    'subtotal'     => $itemTotalTtc,
                 ];
             }
 
-            // 🚀 3. RACE CONDITION FIX: Use lockForUpdate() on sequence number query
+            // 5. Sequence Number & NF525 Cryptographic Hash Chain
             $lastSeqOrder = Order::orderBy('sequence_number', 'desc')->lockForUpdate()->first();
             $sequenceNumber = $lastSeqOrder ? ($lastSeqOrder->sequence_number + 1) : 1;
             $completedAt = Carbon::now();
 
             $lastHashOrder = Order::whereNotNull('hash')->where('hash', '!=', '')->orderBy('sequence_number', 'desc')->first();
-            $previousHash = ($lastHashOrder && !empty($lastHashOrder->hash)) ? $lastHashOrder->hash : '0000000000000000000000000000000000000000000000000000000000000000';
+            $previousHash = ($lastHashOrder && !empty($lastHashOrder->hash))
+                ? $lastHashOrder->hash
+                : '0000000000000000000000000000000000000000000000000000000000000000';
 
+            // 🚀 STEP C: Hash computed on grand totals INCLUDING EXTRAS
             $dataToHash = "{$sequenceNumber}|" . number_format($subtotalExclVat, 2, '.', '') . "|" . number_format($vatAmount, 2, '.', '') . "|" . number_format($totalInclVat, 2, '.', '') . "|{$completedAt->setTimezone('UTC')->format('Y-m-d\TH:i:s\Z')}|{$previousHash}";
             $currentHash = hash('sha256', $dataToHash);
 
-            // 4. Create Order
+            // 🚀 STEP D: Save Order Record with accurate grand totals
             $order = Order::create([
-                'uuid' => (string) \Illuminate\Support\Str::uuid(),
-                'payment_intent_id' => $paymentIntentId, // 🚀 Stores pi_3Tz... ID
-                'user_id' => null,
-                'client_id' => $clientId,
-                'order_type' => 'click_and_collect',
-                'sequence_number' => $sequenceNumber,
-                'subtotal_excl_vat' => $subtotalExclVat,
-                'vat_amount' => $vatAmount,
-                'total_incl_vat' => $totalInclVat,
-                'hash' => $currentHash,
-                'previous_hash' => $previousHash,
-                'completed_at' => $completedAt,
-                'preparation_status' => 'not_accepted', // 🚀 Set to unaccepted so Admin gets audio alert!
-                'status' => 'completed',
+                'uuid'               => (string) \Illuminate\Support\Str::uuid(),
+                'payment_intent_id'  => $paymentIntentId,
+                'client_id'          => $clientId,
+                'customer_name'      => $clientName,
+                'customer_phone'     => $clientPhone,
+                'order_type'         => 'click_and_collect',
+                'sequence_number'    => $sequenceNumber,
+                'subtotal_excl_vat'  => round($subtotalExclVat, 2), // 🚀 HT (incl. extras)
+                'vat_amount'         => round($vatAmount, 2),        // 🚀 TVA (incl. extras)
+                'total_incl_vat'     => round($totalInclVat, 2),     // 🚀 TTC (incl. extras)
+                'hash'               => $currentHash,
+                'previous_hash'      => $previousHash,
+                'completed_at'       => $completedAt,
+                'preparation_status' => 'not_accepted',
+                'status'             => 'completed',
             ]);
 
-            // 5. Create Order Items & Deduct Stocks
+            // 🚀 STEP E: Save Order Items with clean notes & updated unit_price
             foreach ($orderItems as $item) {
                 OrderItem::create([
-                    'order_id' => $order->id,
-                    'product_id' => $item['product_id'],
+                    'order_id'     => $order->id,
+                    'product_id'   => $item['product_id'],
                     'product_name' => $item['product_name'],
-                    'quantity' => $item['quantity'],
-                    'unit_price' => $item['unit_price'],
-                    'vat_rate' => $item['vat_rate'],
-                    'subtotal' => $item['subtotal'],
+                    'notes'        => $item['notes'],      // 🚀 ["No Onions", "Extra Bacon"]
+                    'quantity'     => $item['quantity'],
+                    'unit_price'   => $item['unit_price'], // 🚀 €11.50
+                    'vat_rate'     => $item['vat_rate'],
+                    'subtotal'     => $item['subtotal'],
                 ]);
 
+                // Deduct raw ingredients from inventory
                 $recipes = Recipe::where('product_id', $item['product_id'])->get();
                 foreach ($recipes as $recipe) {
                     Ingredient::where('id', $recipe->ingredient_id)->decrement('stock_level', $item['quantity'] * $recipe->quantity);
                 }
             }
 
-            // 6. Create Payment Log
+            // 🚀 STEP F: Save Payment Log matching exact Stripe total
             Payment::create([
                 'order_id' => $order->id,
-                'amount' => $totalInclVat,
-                'method' => 'stripe_checkout',
+                'amount'   => round($totalInclVat, 2), // 🚀 Matches Stripe Payment
+                'method'   => 'stripe_checkout',
             ]);
 
             DB::commit();
 
-            // 🚀 Fire event for Admin Online Orders Screen & KDS Kitchen Screens
+            // Broadcast to KDS & Admin Online Orders Page
             try {
                 event(new KdsOrderUpdated('new_orders_synced', $order));
             } catch (\Exception $e) {

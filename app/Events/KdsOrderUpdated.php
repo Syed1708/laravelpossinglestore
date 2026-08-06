@@ -19,7 +19,9 @@ class KdsOrderUpdated implements ShouldBroadcastNow
     public function __construct($message = 'update', $order = null)
     {
         $this->message = $message;
-        $this->order = $order;
+
+        // 🚀 Ensure items & client are included in the WebSocket payload
+        $this->order = $order ? $order->loadMissing(['items', 'client']) : null;
         $this->status = $order ? ($order->preparation_status ?? $order->status) : null;
     }
 
@@ -36,6 +38,6 @@ class KdsOrderUpdated implements ShouldBroadcastNow
 
     public function broadcastAs()
     {
-        return 'order-event';
+        return 'order-event'; // 🚀 Listen for '.order-event' on Next.js!
     }
 }
