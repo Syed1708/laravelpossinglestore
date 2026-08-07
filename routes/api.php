@@ -80,7 +80,7 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/online-orders', [OnlineOrderController::class, 'getOnlineOrders']);
     Route::post('/online-orders/{order}/accept', [OnlineOrderController::class, 'acceptOrder']);
-    Route::post('/online-orders/{order}/reject', [OnlineOrderController::class, 'rejectOrder']);
+    Route::post('/online-orders/{order}/reject', [OnlineOrderController::class, 'rejectOrder']); 
 });
 
 // Public Store Hours Status Endpoint

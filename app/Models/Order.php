@@ -18,6 +18,7 @@ class Order extends Model
         'order_type',     // 🚀 Added (dine_in, takeaway, click_and_collect)
         'customer_name',  // 🚀 Added
         'customer_phone', // 🚀 Added
+        'daily_closure_id',
         'sequence_number',
         'subtotal_excl_vat',
         'vat_amount',

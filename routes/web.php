@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\KdsController;
 use App\Http\Controllers\Admin\MenuEngineeringController;
 use App\Http\Controllers\Admin\OnlineOrderController;
+use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\RecipeController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\PurchaseOrderController;
@@ -95,6 +96,7 @@ Route::middleware(['web', 'auth'])->group(function () {
     // Real-Time Kitchen Display Views
     Route::get('/dashboard/kds/chef', [KdsController::class, 'chefIndex'])->name('admin.kds.chef');
     Route::get('/dashboard/kds/packer', [KdsController::class, 'packerIndex'])->name('admin.kds.packer');
+    Route::get('/dashboard/orders-archive', [OrderController::class, 'index'])->name('admin.orders.index');
     
     // API endpoints for real-time WebSocket payload fetching
     Route::get('/api/kds/orders/chef', [KdsController::class, 'getChefOrders'])->name('admin.kds.orders.chef');
