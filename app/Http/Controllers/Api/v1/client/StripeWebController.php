@@ -26,12 +26,20 @@ class StripeWebController extends Controller
      */
     public function createCheckoutSession(Request $request)
     {
-        // 🚀 HARD BACKEND CHECK: Block checkout if restaurant is closed!
-        if (!StoreHoursHelper::isOpen()) {
+        // // 🚀 HARD BACKEND CHECK: Block checkout if restaurant is closed!
+        // if (!StoreHoursHelper::isOpen()) {
+        //     return response()->json([
+        //         'error' => 'Restaurant is currently closed for online ordering.',
+        //         'schedule' => 'Opening Hours: ' . StoreHoursHelper::getScheduleText(),
+        //     ], 403);
+        // }
+
+           // 🛑 Check 1: Global Settings Toggle
+        if (!StoreHoursHelper::canAcceptReservations()) {
             return response()->json([
-                'error' => 'Restaurant is currently closed for online ordering.',
-                'schedule' => 'Opening Hours: ' . StoreHoursHelper::getScheduleText(),
-            ], 403);
+                'success' => false,
+                'message' => 'Table reservations are currently closed by administration.'
+            ], 422);
         }
 
         $request->validate([

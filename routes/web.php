@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\RecipeController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\PurchaseOrderController;
+use App\Http\Controllers\ReservationController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -32,7 +33,7 @@ Route::middleware(['web', 'auth'])->group(function () {
 Route::middleware(['web', 'auth'])->group(function () {
     // Reports dashboard
     Route::get('/admin/reports', [ReportController::class, 'index'])->name('admin.reports.index');
-    
+
     // PDF generator route
     Route::get('/admin/reports/pdf', [ReportController::class, 'downloadPdf'])->name('admin.reports.pdf');
 });
@@ -56,10 +57,9 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::get('/admin/purchases/{purchase}', [PurchaseOrderController::class, 'show'])->name('admin.purchases.show');
     Route::post('/admin/purchases/{purchase}/receive', [PurchaseOrderController::class, 'receive'])->name('admin.purchases.receive');
     Route::delete('/admin/purchases/{purchase}', [PurchaseOrderController::class, 'destroy'])->name('admin.purchases.destroy');
-// 🚀 NEW: Cancel/Reject Delivery Route
+    // 🚀 NEW: Cancel/Reject Delivery Route
     Route::post('/admin/purchases/{purchase}/cancel', [PurchaseOrderController::class, 'cancel'])->name('admin.purchases.cancel');
-    
-    });
+});
 
 Route::middleware(['web', 'auth'])->group(function () {
     // Custom Menu Engineering & Profitability route
@@ -69,14 +69,13 @@ Route::middleware(['web', 'auth'])->group(function () {
 Route::prefix('admin')->middleware(['auth'])->group(function () {
     Route::get('/orders/online-management', [OnlineOrderController::class, 'index'])->name('admin.orders.online');
     Route::get('/orders/online-grid', function () {
-    return view('admin.orders.onlinegrid');
+        return view('admin.orders.onlinegrid');
     })->name('admin.orders.online-grid');
 
     // 🚀 Admin API Endpoints (Authorized via Web Session Cookie)
     Route::get('/api/online-orders', [OnlineOrderController::class, 'getOnlineOrders']);
     Route::post('/api/online-orders/{order}/accept', [OnlineOrderController::class, 'acceptOrder']);
     Route::post('/api/online-orders/{order}/reject', [OnlineOrderController::class, 'rejectOrder']);
-
 });
 
 // routes/web.php
@@ -92,18 +91,25 @@ Route::get('/lang/{locale}', function ($locale) {
 
 Route::middleware(['web', 'auth'])->group(function () {
     // ... other routes ...
-    
+
     // Real-Time Kitchen Display Views
     Route::get('/dashboard/kds/chef', [KdsController::class, 'chefIndex'])->name('admin.kds.chef');
     Route::get('/dashboard/kds/packer', [KdsController::class, 'packerIndex'])->name('admin.kds.packer');
     Route::get('/dashboard/orders-archive', [OrderController::class, 'index'])->name('admin.orders.index');
-    
+    // 🗺️ Floor Plan & Hostess Screen
+    Route::get('/dashboard/reservations/floor-plan', [ReservationController::class, 'floorPlan'])->name('admin.reservations.floor_plan');
+
     // API endpoints for real-time WebSocket payload fetching
     Route::get('/api/kds/orders/chef', [KdsController::class, 'getChefOrders'])->name('admin.kds.orders.chef');
     Route::get('/api/kds/orders/packer', [KdsController::class, 'getPackerOrders'])->name('admin.kds.orders.packer');
-    
+
     // Status update endpoints
     Route::post('/api/kds/items/{item}/toggle', [KdsController::class, 'toggleItemStatus'])->name('admin.kds.item.toggle');
     Route::post('/api/kds/orders/{order}/status', [KdsController::class, 'updateOrderStatus'])->name('admin.kds.order.update');
 });
 
+Route::prefix('admin')->middleware(['web', 'auth'])->group(function () {
+    Route::get('/api/reservations/by-date', [ReservationController::class, 'getReservationsByDate']);
+    Route::post('/api/reservations/phone-booking', [ReservationController::class, 'storePhoneBooking']);
+    Route::post('/api/reservations/{reservation}/status', [ReservationController::class, 'updateStatus']);
+});

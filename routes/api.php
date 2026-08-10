@@ -1,5 +1,6 @@
 <?php
 
+use App\Helpers\StoreHoursHelper;
 use App\Http\Controllers\Admin\OnlineOrderController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -10,6 +11,7 @@ use App\Http\Controllers\Api\v1\client\StripeWebController;
 use App\Http\Controllers\Api\v1\Pos\DayClosureApiController;
 use App\Http\Controllers\Api\v1\Pos\PosSalesApiController;
 use App\Http\Controllers\Api\v1\staff\AuthController;
+use App\Http\Controllers\ReservationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -83,10 +85,24 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/online-orders/{order}/reject', [OnlineOrderController::class, 'rejectOrder']); 
 });
 
-// Public Store Hours Status Endpoint
+
+
 Route::get('/store-status', function () {
     return response()->json([
-        'is_open' => \App\Helpers\StoreHoursHelper::isOpen(),
-        'schedule' => \App\Helpers\StoreHoursHelper::getScheduleText(),
+        'is_open'                 => StoreHoursHelper::isOpen(),
+        'online_orders_enabled'   => StoreHoursHelper::canAcceptOnlineOrders(),
+        'reservations_enabled'    => StoreHoursHelper::canAcceptReservations(),
+        'schedule'                => StoreHoursHelper::getScheduleText(),
+        'closed_message'          => StoreHoursHelper::getClosedMessage(),
     ]);
+});
+// Public Customer Reservation Endpoints
+Route::get('/reservations/availability', [ReservationController::class, 'checkAvailability']);
+Route::post('/reservations/online', [ReservationController::class, 'storeOnline']);
+
+// Authenticated Staff / POS Endpoints
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/reservations/by-date', [ReservationController::class, 'getReservationsByDate']);
+    Route::post('/reservations/phone-booking', [ReservationController::class, 'storePhoneBooking']);
+    Route::post('/reservations/{reservation}/status', [ReservationController::class, 'updateStatus']);
 });
