@@ -110,13 +110,22 @@ class ReservationController extends Controller
      */
     public function storeOnline(Request $request)
     {
-        // 🛑 Check 1: Global Settings Toggle
-        if (!StoreHoursHelper::canAcceptReservations()) {
+
+        // 🛑 REQUIRE CUSTOMER LOGIN: Block unauthenticated web bookings
+        $clientId = auth('sanctum')->id() ?? $request->user('sanctum')?->id;
+        if (!$clientId) {
             return response()->json([
                 'success' => false,
-                'message' => 'Table reservations are currently closed by administration.'
-            ], 422);
+                'message' => 'Authentication required. Please sign in to reserve a table.'
+            ], 401);
         }
+        // // 🛑 Check 1: Global Settings Toggle
+        // if (!StoreHoursHelper::canAcceptReservations()) {
+        //     return response()->json([
+        //         'success' => false,
+        //         'message' => 'Table reservations are currently closed by administration.'
+        //     ], 422);
+        // }
 
         $validated = $request->validate([
             'customer_name'    => 'required|string|max:255',
@@ -341,6 +350,52 @@ class ReservationController extends Controller
             'success'     => true,
             'message'     => "Reservation status updated to {$reservation->status}",
             'reservation' => $reservation->load('table'),
+        ]);
+    }
+
+
+    /**
+     * Get reservations belonging to the authenticated customer
+     */
+    public function getClientReservations(Request $request)
+    {
+        $clientId = auth('sanctum')->id();
+        if (!$clientId) {
+            return response()->json([]);
+        }
+
+        $reservations = Reservation::where('client_id', $clientId)
+            ->with('table')
+            ->latest()
+            ->get();
+
+        return response()->json($reservations);
+    }
+
+    /**
+     * Allow customer to cancel their own upcoming reservation
+     */
+    public function cancelClientReservation(Request $request, Reservation $reservation)
+    {
+        $clientId = auth('sanctum')->id();
+        if ($reservation->client_id !== $clientId) {
+            return response()->json(['message' => 'Unauthorized action.'], 403);
+        }
+
+        if ($reservation->status === 'seated' || $reservation->status === 'completed') {
+            return response()->json(['message' => 'Cannot cancel an active or completed booking.'], 422);
+        }
+
+        $reservation->update(['status' => 'cancelled']);
+
+        try {
+            event(new \App\Events\ReservationUpdated('cancelled', $reservation));
+        } catch (\Exception $e) {
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Reservation cancelled successfully.'
         ]);
     }
 }

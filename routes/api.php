@@ -46,6 +46,7 @@ Route::middleware('auth:sanctum')->group(function () {
     return response()->json(\App\Models\Table::where('is_active', true)->orderBy('table_number')->get());
 });
 
+
     // POS Bulk Sync Route
     Route::post('/orders/sync', [OrderSyncController::class, 'sync']);
     // z-closure
@@ -62,6 +63,11 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 
+// In routes/api.php
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/client/reservations', [ReservationController::class, 'getClientReservations']);
+    Route::post('/client/reservations/{reservation}/cancel', [ReservationController::class, 'cancelClientReservation']);
+});
 // Clients
 
 Route::post('/client/register', [ClientAuthController::class, 'register']);
@@ -91,12 +97,15 @@ Route::middleware('auth:sanctum')->group(function () {
 
 
 Route::get('/store-status', function () {
+    $settings = \App\Models\StoreSetting::getSettings();
+
     return response()->json([
-        'is_open'                 => StoreHoursHelper::isOpen(),
-        'online_orders_enabled'   => StoreHoursHelper::canAcceptOnlineOrders(),
-        'reservations_enabled'    => StoreHoursHelper::canAcceptReservations(),
-        'schedule'                => StoreHoursHelper::getScheduleText(),
-        'closed_message'          => StoreHoursHelper::getClosedMessage(),
+        'is_open'               => StoreHoursHelper::isOpen(),              // Open right now at this minute
+        'is_store_open'         => (bool) $settings->is_store_open,         // Master Admin Toggle
+        'online_orders_enabled' => StoreHoursHelper::canAcceptOnlineOrders(),
+        'reservations_enabled'  => StoreHoursHelper::canAcceptReservations(), // Master ON + Reservations ON
+        'schedule'              => StoreHoursHelper::getScheduleText(),
+        'closed_message'        => StoreHoursHelper::getClosedMessage(),
     ]);
 });
 // Public Customer Reservation Endpoints

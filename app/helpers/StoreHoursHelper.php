@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Log;
 class StoreHoursHelper
 {
     /**
-     * 🚀 Checks if the restaurant is currently OPEN (Master Toggle + Operating Schedule)
+     * 🚀 Checks if the restaurant is currently OPEN at this exact minute
      */
     public static function isOpen(): bool
     {
@@ -27,7 +27,7 @@ class StoreHoursHelper
     }
 
     /**
-     * 🚀 Checks if Online Orders can be accepted RIGHT NOW (Master Toggle + Online Toggle + Schedule)
+     * 🚀 ONLINE ORDERS CHECK (Must be open RIGHT NOW during active shift)
      */
     public static function canAcceptOnlineOrders(): bool
     {
@@ -41,16 +41,18 @@ class StoreHoursHelper
     }
 
     /**
-     * 🚀 Checks if Table Reservations are enabled
+     * 🚀 RESERVATIONS CHECK (Allowed 24/7 for future days as long as Toggles are ON)
+     * Does NOT check if store is open right now, so customers can book at night!
      */
     public static function canAcceptReservations(): bool
     {
         $settings = StoreSetting::getSettings();
+
         return (bool) $settings->reservations_enabled && (bool) $settings->is_store_open;
     }
 
     /**
-     * 🚀 Checks if a specific time (e.g. "06:30" or "19:30") falls within shift 1 or shift 2
+     * 🚀 Checks if a specific requested time (e.g. "19:30" or "06:30") falls within shift 1 or shift 2
      */
     public static function isTimeInSchedule(string $time): bool
     {
