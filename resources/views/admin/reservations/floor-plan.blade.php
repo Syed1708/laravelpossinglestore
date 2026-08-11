@@ -24,14 +24,11 @@
             }
         }
 
-        /* Table Grid Cards */
         .tables-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
             gap: 16px;
         }
-
-
 
         .table-occupied {
             border-color: #ef4444;
@@ -68,8 +65,6 @@
             text-transform: uppercase;
         }
 
-        /* Queue Sidebar */
-        /* 🚀 THEME-AWARE QUEUE SIDEBAR (Light & Dark Mode Compatible) */
         .queue-sidebar {
             background-color: var(--card, var(--card-bg, #1e293b));
             border: 1px solid var(--border, #e2e8f0);
@@ -79,7 +74,6 @@
             color: var(--foreground, var(--text-main, #0f172a));
         }
 
-        /* Individual Booking Card inside Queue */
         .booking-item {
             background-color: var(--muted, var(--bg-color, #f8fafc));
             border: 1px solid var(--border, #e2e8f0);
@@ -103,7 +97,6 @@
             font-weight: 600;
         }
 
-        /* Table Cards Theme Adaptation */
         .table-card {
             background-color: var(--card, var(--card-bg, #1e293b));
             border: 2px solid var(--border, #e2e8f0);
@@ -173,7 +166,6 @@
             <div class="tables-grid">
                 @foreach ($tables as $table)
                     @php
-                        // Find active reservation seated at this table today
                         $activeRes = $reservations->first(
                             fn($r) => $r->table_id === $table->id && $r->status === 'seated',
                         );
@@ -217,7 +209,7 @@
                                     ⏰ {{ Carbon\Carbon::parse($upcomingRes->reservation_time)->format('H:i') }} -
                                     {{ $upcomingRes->customer_name }}
                                 </div>
-                                <button onclick="updateReservationStatus({{ $upcomingRes->id }}, 'seated')"
+                                <button onclick="updateReservationStatus({{ $upcomingRes->id }}, 'seated', {{ $table->id }})"
                                     class="btn-seat">
                                     Seat Guests Now
                                 </button>
@@ -233,7 +225,6 @@
         </div>
 
         <!-- RIGHT: TODAY'S RESERVATIONS QUEUE -->
-        <!-- RIGHT: TODAY'S RESERVATIONS QUEUE (Light & Dark Mode Compatible) -->
         <div class="queue-sidebar">
             <h3 style="margin-top: 0; margin-bottom: 15px; font-weight: 800; font-size: 16px;">
                 📅 Bookings Queue ({{ $reservations->count() }})
@@ -243,18 +234,37 @@
                 <div class="booking-item">
                     <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                         <div>
-                            <!-- 🚀 Customer Name adapts to theme -->
                             <div class="booking-item-name">{{ $res->customer_name }}</div>
                             <div class="booking-item-details">
                                 📞 {{ $res->customer_phone }} | 👥 {{ $res->guest_count }} Guests
                             </div>
                         </div>
 
-                        <span
-                            class="badge {{ $res->status === 'seated' ? 'badge-danger' : ($res->status === 'confirmed' ? 'badge-warning' : 'badge-success') }}">
+                        <span class="badge {{ $res->status === 'seated' ? 'badge-danger' : ($res->status === 'confirmed' ? 'badge-warning' : 'badge-success') }}">
                             {{ Carbon\Carbon::parse($res->reservation_time)->format('H:i') }}
                         </span>
                     </div>
+
+                    <!-- 🚀 TABLE SPECS BADGE / UNASSIGNED DROPDOWN -->
+                    @if($res->table)
+                        <div style="font-size: 11px; font-weight: 800; color: var(--muted-foreground, #64748b); margin-top: 6px; display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.05); padding: 4px 8px; border-radius: 6px; border: 1px solid var(--border, #334155);">
+                            <span>🍽️ Table: <strong>{{ $res->table->table_number }}</strong></span>
+                            <span>Cap: {{ $res->table->capacity }} | {{ strtoupper($res->table->zone) }}</span>
+                        </div>
+                    @else
+                        <div style="font-size: 11px; font-weight: 800; color: #f59e0b; margin-top: 6px; display: flex; align-items: center; justify-content: space-between; gap: 8px; background: rgba(245, 158, 11, 0.1); padding: 4px 8px; border-radius: 6px; border: 1px solid rgba(245, 158, 11, 0.3);">
+                            <span>⚠️ Table Not Assigned</span>
+                            <select onchange="updateReservationStatus({{ $res->id }}, 'confirmed', this.value)" class="form-select" style="font-size: 10px; padding: 2px 6px; height: auto; width: auto; background: var(--card-bg, #1e293b); color: var(--text-main, #f8fafc);">
+                                <option value="">Assign Table ▾</option>
+                                @foreach($tables as $t)
+                                    <!-- 🚀 EXCLUDES ALREADY BOOKED TABLES -->
+                                    @if(!in_array($t->id, $takenTableIds) && $t->capacity >= $res->guest_count)
+                                        <option value="{{ $t->id }}">{{ $t->table_number }} ({{ $t->capacity }}s - {{ $t->zone }})</option>
+                                    @endif
+                                @endforeach
+                            </select>
+                        </div>
+                    @endif
 
                     @if ($res->special_notes)
                         <p style="font-size: 11px; color: #d97706; margin: 8px 0 0 0; font-weight: bold;">
@@ -262,23 +272,21 @@
                         </p>
                     @endif
 
+                    <!-- Action Buttons -->
                     <div style="display: flex; gap: 6px; margin-top: 10px;">
                         @if ($res->status === 'confirmed')
-                            <button onclick="updateReservationStatus({{ $res->id }}, 'seated')" class="btn-seat">
+                            <button onclick="updateReservationStatus({{ $res->id }}, 'seated', {{ $res->table_id ?? 'null' }})" class="btn-seat">
                                 🛋️ Seat Guests
                             </button>
-                            <button onclick="updateReservationStatus({{ $res->id }}, 'cancelled')"
-                                class="btn btn-ghost" style="font-size: 11px; color: #ef4444;">
+                            <button onclick="updateReservationStatus({{ $res->id }}, 'cancelled')" class="btn btn-ghost" style="font-size: 11px; color: #ef4444;">
                                 Cancel
                             </button>
                         @elseif($res->status === 'seated')
-                            <button onclick="updateReservationStatus({{ $res->id }}, 'completed')"
-                                class="btn btn-secondary" style="font-size: 11px; width: 100%;">
+                            <button onclick="updateReservationStatus({{ $res->id }}, 'completed')" class="btn btn-secondary" style="font-size: 11px; width: 100%;">
                                 🎉 Complete Booking
                             </button>
                         @else
-                            <span
-                                style="font-size: 11px; font-weight: bold; color: #10b981; margin-top: 4px; display: inline-block;">
+                            <span style="font-size: 11px; font-weight: bold; color: #10b981; margin-top: 4px; display: inline-block;">
                                 ✓ {{ strtoupper($res->status) }}
                             </span>
                         @endif
@@ -309,14 +317,12 @@
                     </div>
                     <div class="form-group">
                         <label class="form-label">Phone Number</label>
-                        <input type="text" name="customer_phone" class="form-input" required
-                            placeholder="e.g. +33612345678">
+                        <input type="text" name="customer_phone" class="form-input" required placeholder="e.g. +33612345678">
                     </div>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                         <div class="form-group">
                             <label class="form-label">Date</label>
-                            <input type="date" name="reservation_date" class="form-input" value="{{ $date }}"
-                                required>
+                            <input type="date" name="reservation_date" class="form-input" value="{{ $date }}" min="{{ Carbon\Carbon::now('Europe/Paris')->toDateString() }}" required>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Time</label>
@@ -326,29 +332,28 @@
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                         <div class="form-group">
                             <label class="form-label">Guest Count</label>
-                            <input type="number" name="guest_count" class="form-input" value="2" min="1"
-                                max="20" required>
+                            <input type="number" name="guest_count" class="form-input" value="2" min="1" max="20" required>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Assign Table (Optional)</label>
                             <select name="table_id" class="form-select">
                                 <option value="">Auto-Assign Later</option>
                                 @foreach ($tables as $t)
-                                    <option value="{{ $t->id }}">{{ $t->table_number }} ({{ $t->capacity }}
-                                        seats - {{ $t->zone }})</option>
+                                    <!-- 🚀 EXCLUDES ALREADY BOOKED TABLES -->
+                                    @if(!in_array($t->id, $takenTableIds))
+                                        <option value="{{ $t->id }}">{{ $t->table_number }} ({{ $t->capacity }} seats - {{ $t->zone }})</option>
+                                    @endif
                                 @endforeach
                             </select>
                         </div>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Special Notes / Requests</label>
-                        <input type="text" name="special_notes" class="form-input"
-                            placeholder="e.g. Birthday, terrace preferred...">
+                        <input type="text" name="special_notes" class="form-input" placeholder="e.g. Birthday, terrace preferred...">
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary"
-                        onclick="closeModal('phoneBookingModal')">Cancel</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('phoneBookingModal')">Cancel</button>
                     <button type="submit" class="btn btn-primary">Confirm Phone Booking</button>
                 </div>
             </form>
@@ -357,14 +362,12 @@
 
     @push('scripts')
         <script>
-            // 🚀 FIX BUG 3: Clear form fields when opening modal
             function openPhoneBookingModal() {
                 const form = document.getElementById('phoneBookingForm');
                 if (form) form.reset();
                 openModal('phoneBookingModal');
             }
 
-            // 🚀 FIX BUG 1: Convert FormData to JSON payload
             async function handlePhoneBookingSubmit(e) {
                 e.preventDefault();
                 const payload = Object.fromEntries(new FormData(e.target));
@@ -373,7 +376,7 @@
                     const response = await fetch('/admin/api/reservations/phone-booking', {
                         method: 'POST',
                         headers: {
-                            'Content-Type': 'application/json', // Matches JSON payload
+                            'Content-Type': 'application/json',
                             'X-CSRF-TOKEN': '{{ csrf_token() }}',
                             'Accept': 'application/json'
                         },
@@ -393,9 +396,19 @@
                 }
             }
 
-            // 🚀 FIX BUG 2: Status Update JS
-            async function updateReservationStatus(reservationId, status) {
+            async function updateReservationStatus(reservationId, status, tableId = null) {
+                if (status === 'cancelled') {
+                    if (!confirm('Are you sure you want to cancel this table reservation?')) {
+                        return;
+                    }
+                }
+
                 try {
+                    const payload = { status: status };
+                    if (tableId) {
+                        payload.table_id = tableId;
+                    }
+
                     const response = await fetch(`/admin/api/reservations/${reservationId}/status`, {
                         method: 'POST',
                         headers: {
@@ -403,12 +416,9 @@
                             'X-CSRF-TOKEN': '{{ csrf_token() }}',
                             'Accept': 'application/json'
                         },
-                        body: JSON.stringify({
-                            status
-                        })
+                        body: JSON.stringify(payload)
                     });
 
-                    // 🚀 Read raw text first to prevent JSON parse crashes on HTML errors
                     const responseText = await response.text();
                     let data;
                     try {
@@ -430,9 +440,6 @@
                 }
             }
 
-
-            // Reverb WebSockets Real-Time Listener
-
             const pusherKey = '{{ env('REVERB_APP_KEY') }}';
             if (pusherKey) {
                 const pusher = new Pusher(pusherKey, {
@@ -445,11 +452,8 @@
 
                 const channel = pusher.subscribe('kds-channel');
                 channel.bind('reservation-event', function(data) {
-                    console.log('⚡ Live Reservation Event:', data.action, data.reservation);
-                    // Reloads table grid or hostess queue instantly!
                     window.location.reload();
                 });
-
             }
         </script>
     @endpush

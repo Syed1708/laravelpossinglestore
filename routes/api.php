@@ -42,6 +42,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', function (Request $request) {
         return $request->user();
     });
+    Route::get('/tables', function () {
+    return response()->json(\App\Models\Table::where('is_active', true)->orderBy('table_number')->get());
+});
 
     // POS Bulk Sync Route
     Route::post('/orders/sync', [OrderSyncController::class, 'sync']);

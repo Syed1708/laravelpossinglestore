@@ -24,10 +24,17 @@ class ReservationController extends Controller
 
         $reservations = Reservation::whereDate('reservation_date', $date)
             ->with(['table', 'client'])
-            ->orderBy('reservation_time', 'asc')
+            ->latest()
             ->get();
 
-        return view('admin.reservations.floor-plan', compact('tables', 'reservations', 'date'));
+        // 🚀 CALCULATE TABLE IDs ALREADY BOOKED OR SEATED FOR THIS DATE
+        $takenTableIds = $reservations
+            ->filter(fn($r) => !empty($r->table_id) && in_array($r->status, ['confirmed', 'seated']))
+            ->pluck('table_id')
+            ->unique()
+            ->toArray();
+
+        return view('admin.reservations.floor-plan', compact('tables', 'reservations', 'date', 'takenTableIds'));
     }
     /**
      * 1. Public API: Check table availability for a specific date, time, and guest count
@@ -72,7 +79,7 @@ class ReservationController extends Controller
     }
 
 
-       /**
+    /**
      * 🚀 TABLE CONFLICT CHECKER:
      * Checks if a table is already booked within a 2-hour window on the same date
      */
@@ -149,7 +156,7 @@ class ReservationController extends Controller
         }
 
 
-            // 🚀 AUTO-ASSIGN UNRESERVED TABLE THAT FITS GUEST COUNT
+        // 🚀 AUTO-ASSIGN UNRESERVED TABLE THAT FITS GUEST COUNT
         $bookingTime = Carbon::parse("{$validated['reservation_date']} {$validated['reservation_time']}");
         $windowStart = (clone $bookingTime)->subMinutes(90)->format('H:i:s');
         $windowEnd   = (clone $bookingTime)->addMinutes(90)->format('H:i:s');
@@ -158,8 +165,8 @@ class ReservationController extends Controller
             ->where('capacity', '>=', $validated['guest_count'])
             ->whereDoesntHave('reservations', function ($q) use ($validated, $windowStart, $windowEnd) {
                 $q->where('reservation_date', $validated['reservation_date'])
-                  ->whereIn('status', ['confirmed', 'seated'])
-                  ->whereBetween('reservation_time', [$windowStart, $windowEnd]);
+                    ->whereIn('status', ['confirmed', 'seated'])
+                    ->whereBetween('reservation_time', [$windowStart, $windowEnd]);
             })
             ->first();
 
@@ -172,7 +179,7 @@ class ReservationController extends Controller
 
         $clientId = auth('sanctum')->id() ?? $request->input('client_id');
 
-        
+
 
         $reservation = Reservation::create([
             'client_id'        => $clientId,
@@ -207,7 +214,7 @@ class ReservationController extends Controller
      */
     public function storePhoneBooking(Request $request)
     {
-                // 🛑 CHECK 1: Global Setting Toggle Check
+        // 🛑 CHECK 1: Global Setting Toggle Check
         if (!StoreHoursHelper::canAcceptReservations()) {
             return response()->json([
                 'success' => false,
@@ -253,7 +260,7 @@ class ReservationController extends Controller
         }
 
 
-                // 🛑 TABLE DOUBLE-BOOKING CHECK!
+        // 🛑 TABLE DOUBLE-BOOKING CHECK!
         if (!empty($validated['table_id'])) {
             if ($this->isTableAlreadyReserved($validated['table_id'], $validated['reservation_date'], $validated['reservation_time'])) {
                 $table = Table::find($validated['table_id']);
