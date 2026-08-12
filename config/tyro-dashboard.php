@@ -277,11 +277,27 @@ return [
                 ],
                 // 🚀 NEW: Product Description Textarea
                 'description' => [
-                    'type' => 'textarea',
+                    'type' => 'richtext',
                     'label' => 'Product Description',
                     'rules' => 'nullable|string|max:1000'
                 ],
-
+                // 🚀 TEXT / TEXTAREA FIELDS (Comma-Separated)
+                'ingredients' => [
+                    'type' => 'textarea',
+                    'label' => 'Ingredients (Comma-separated: e.g. Beef Patty, Brioche Bun, Cheddar)',
+                ],
+                'allergens' => [
+                    'type' => 'text',
+                    'label' => 'Allergens (Comma-separated: e.g. gluten, dairy, nuts, eggs)',
+                ],
+                'dietary_flags' => [
+                    'type' => 'text',
+                    'label' => 'Dietary Badges (Comma-separated: e.g. halal, vegetarian, spicy)',
+                ],
+                'calories' => [
+                    'type' => 'text',
+                    'label' => 'Caloric Value (e.g. 650 kcal)'
+                ],
                 // 🚀 NEW: Product Image Upload Field (Saved directly to public disk!)
                 'image_path' => [
                     'type' => 'file',

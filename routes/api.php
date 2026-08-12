@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\v1\Pos\DayClosureApiController;
 use App\Http\Controllers\Api\v1\Pos\PosSalesApiController;
 use App\Http\Controllers\Api\v1\staff\AuthController;
 use App\Http\Controllers\ReservationController;
+use App\Models\Product;
 
 /*
 |--------------------------------------------------------------------------
@@ -20,6 +21,7 @@ use App\Http\Controllers\ReservationController;
 | Anyone in the world (including anonymous online customers) can view your 
 | menu, create Stripe checkout sessions, and Stripe's servers can trigger webhooks.
 */
+
 Route::get('/menu', [MenuController::class, 'index']); // 🚀 Moved outside auth:sanctum!
 Route::post('/stripe/checkout-session', [StripeWebController::class, 'createCheckoutSession']);
 Route::post('/stripe/webhook', [StripeWebController::class, 'handleWebhook']);
@@ -43,8 +45,8 @@ Route::middleware('auth:sanctum')->group(function () {
         return $request->user();
     });
     Route::get('/tables', function () {
-    return response()->json(\App\Models\Table::where('is_active', true)->orderBy('table_number')->get());
-});
+        return response()->json(\App\Models\Table::where('is_active', true)->orderBy('table_number')->get());
+    });
 
 
     // POS Bulk Sync Route
@@ -55,11 +57,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/pos/z-closure/history', [DayClosureApiController::class, 'getClosureHistory']);
 
 
-        // 🚀 POS Sales History & Refunds
+    // 🚀 POS Sales History & Refunds
     Route::get('/pos/sales', [PosSalesApiController::class, 'getSalesHistory']);
     Route::get('/pos/sales/{id}', [PosSalesApiController::class, 'showOrderDetails']);
     Route::post('/pos/refund/{id}', [PosSalesApiController::class, 'refundOrder']);
-
 });
 
 
@@ -76,7 +77,7 @@ Route::post('/client/login', [ClientAuthController::class, 'login']);
 
 // 3. Protected Client Routes (Using Sanctum)
 Route::middleware('auth:sanctum')->group(function () {
-    
+
     // Get Current Logged-in Client Profile
     Route::get('/client/me', function (Request $request) {
         return $request->user();
@@ -85,13 +86,12 @@ Route::middleware('auth:sanctum')->group(function () {
     // Get Logged-in Client's Orders
     Route::get('/client/orders', [ClientAuthController::class, 'clientOrders']);
     Route::get('/client/profile', [ClientAuthController::class, 'clientProfile']);
-
 });
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/online-orders', [OnlineOrderController::class, 'getOnlineOrders']);
     Route::post('/online-orders/{order}/accept', [OnlineOrderController::class, 'acceptOrder']);
-    Route::post('/online-orders/{order}/reject', [OnlineOrderController::class, 'rejectOrder']); 
+    Route::post('/online-orders/{order}/reject', [OnlineOrderController::class, 'rejectOrder']);
 });
 
 
@@ -117,4 +117,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/reservations/by-date', [ReservationController::class, 'getReservationsByDate']);
     Route::post('/reservations/phone-booking', [ReservationController::class, 'storePhoneBooking']);
     Route::post('/reservations/{reservation}/status', [ReservationController::class, 'updateStatus']);
+});
+
+
+// 🚀 PUBLIC SINGLE PRODUCT DETAILS ENDPOINT
+Route::get('/products/{product}', function (Product $product) {
+    return response()->json([
+        'success' => true,
+        'data'    => $product
+    ]);
 });

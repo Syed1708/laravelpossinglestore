@@ -11,10 +11,14 @@ class Product extends Model
     use HasCrud;
 
     protected $fillable = [
-        'category_id',
         'name',
         'description', // 🚀 ADD THIS
+                'allergens',
+        'ingredients',
+        'dietary_flags',
+        'calories',
         'image_path',  // 🚀 ADD THIS
+        'category_id',
         'price',
         'vat_rate',
         'is_active'
@@ -27,6 +31,65 @@ class Product extends Model
         'vat_rate' => 'float',  // Converts "10.00" to 10.0
         'is_active' => 'boolean',
     ];
+
+    // 🚀 MUTATORS & ACCESSORS HANDLE JSON ENCODING/DECODING
+    public function setAllergensAttribute($value)
+    {
+        if (is_array($value)) {
+            $this->attributes['allergens'] = json_encode($value);
+        } else {
+            $array = array_values(array_filter(array_map('trim', explode(',', $value ?? ''))));
+            $this->attributes['allergens'] = json_encode($array);
+        }
+    }
+
+    public function getAllergensAttribute($value)
+    {
+        if (is_array($value)) {
+            return implode(', ', $value);
+        }
+        $decoded = json_decode($value ?? '[]', true);
+        return is_array($decoded) ? implode(', ', $decoded) : ($value ?? '');
+    }
+
+    public function setIngredientsAttribute($value)
+    {
+        if (is_array($value)) {
+            $this->attributes['ingredients'] = json_encode($value);
+        } else {
+            $array = array_values(array_filter(array_map('trim', explode(',', $value ?? ''))));
+            $this->attributes['ingredients'] = json_encode($array);
+        }
+    }
+
+    public function getIngredientsAttribute($value)
+    {
+        if (is_array($value)) {
+            return implode(', ', $value);
+        }
+        $decoded = json_decode($value ?? '[]', true);
+        return is_array($decoded) ? implode(', ', $decoded) : ($value ?? '');
+    }
+
+    public function setDietaryFlagsAttribute($value)
+    {
+        if (is_array($value)) {
+            $this->attributes['dietary_flags'] = json_encode($value);
+        } else {
+            $array = array_values(array_filter(array_map('trim', explode(',', $value ?? ''))));
+            $this->attributes['dietary_flags'] = json_encode($array);
+        }
+    }
+
+    public function getDietaryFlagsAttribute($value)
+    {
+        if (is_array($value)) {
+            return implode(', ', $value);
+        }
+        $decoded = json_decode($value ?? '[]', true);
+        return is_array($decoded) ? implode(', ', $decoded) : ($value ?? '');
+    }
+
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
