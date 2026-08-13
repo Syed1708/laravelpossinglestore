@@ -7,6 +7,9 @@ use Illuminate\Database\Eloquent\Model;
 class StoreSetting extends Model
 {
     protected $fillable = [
+        'country',
+        'currency',
+        'default_payroll_frequency',
         'is_store_open',
         'online_orders_enabled',
         'reservations_enabled',
@@ -29,6 +32,9 @@ class StoreSetting extends Model
     public static function getSettings(): self
     {
         return static::latest('id')->first() ?? static::create([
+            'country'                   => 'FR',
+            'currency'                  => 'EUR',
+            'default_payroll_frequency' => 'monthly',
             'is_store_open'         => true,
             'online_orders_enabled' => true,
             'reservations_enabled'  => true,

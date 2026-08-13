@@ -1,53 +1,61 @@
-<!-- resources/views/admin/recipes/index.blade.php -->
-@extends('tyro-dashboard::layouts.app')
+@extends(view()->exists('tyro-dashboard::layouts.admin') ? 'tyro-dashboard::layouts.admin' : 'tyro-dashboard::layouts.app')
 
-@section('title', 'Gestion des Fiches Recettes')
+@section('title', 'Recipe Costing & Builder')
 
 @section('breadcrumb')
-<span>Fiches Recettes</span>
+<a href="{{ route('tyro-dashboard.index') }}">Dashboard</a>
+<span class="breadcrumb-separator">/</span>
+<span>Recipes &amp; Costing</span>
 @endsection
 
 @section('content')
 <div class="page-header">
     <div class="page-header-row">
         <div>
-            <h1 class="page-title">⚙️ Fiches Techniques & Recettes</h1>
-            <p class="page-description">Associez vos produits finis à leurs ingrédients bruts pour automatiser vos stocks.</p>
+            <h1 class="page-title">📖 Recipe Costing &amp; Composition</h1>
+            <p class="page-description">Manage raw ingredient compositions, stock reduction rules, and food cost margins for menu products.</p>
         </div>
     </div>
 </div>
 
 <div class="card">
-    <div class="card-header">
-        <h3 class="card-title">Sélectionnez un Produit</h3>
-    </div>
-    <div class="card-body" style="padding: 0;">
-        <div class="table-container">
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Nom du Produit</th>
-                        <th>Catégorie</th>
-                        <th>Prix Public (TTC)</th>
-                        <th style="text-align: right;">Configuration</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($products as $product)
-                        <tr>
-                            <td style="font-weight: bold; color: var(--foreground);">{{ $product->name }}</td>
-                            <td style="color: var(--muted-foreground);">{{ $product->category->name ?? 'N/A' }}</td>
-                            <td style="font-weight: 600;">{{ number_format($product->price, 2, ',', ' ') }} €</td>
-                            <td style="text-align: right;">
-                                <a href="{{ route('admin.recipes.show', $product->id) }}" class="btn btn-sm btn-primary">
-                                    ⚙️ Gérer la Recette
-                                </a>
-                            </td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
+    <div class="table-container">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Product Name</th>
+                    <th>Category</th>
+                    <th>Selling Price (TTC)</th>
+                    <th>Recipe Composition</th>
+                    <th style="text-align: right;">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($products as $product)
+                <tr>
+                    <td>
+                        <strong style="font-size: 15px;">{{ $product->name }}</strong>
+                    </td>
+                    <td>
+                        <span class="badge badge-secondary">{{ $product->category->name ?? 'Uncategorized' }}</span>
+                    </td>
+                    <td>
+                        <strong style="color: var(--primary);">{{ $currencySymbol }}{{ number_format($product->price, 2) }}</strong>
+                    </td>
+                    <td>
+                        <span class="badge {{ $product->recipes->count() > 0 ? 'badge-success' : 'badge-warning' }}">
+                            {{ $product->recipes->count() }} Ingredients Configured
+                        </span>
+                    </td>
+                    <td style="text-align: right;">
+                        <a href="{{ route('admin.recipes.show', $product->id) }}" class="btn btn-primary" style="font-size: 12px; padding: 6px 12px;">
+                            ⚙️ Manage Recipe &amp; Costing
+                        </a>
+                    </td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
     </div>
 </div>
 @endsection

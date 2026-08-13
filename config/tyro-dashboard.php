@@ -412,51 +412,11 @@ return [
             'icon' => '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.83m-3.703 3.75l-5.877-5.83a2.652 2.652 0 00-3.75 3.75l5.877 5.83m3.703-3.75V11.42m0 3.75H11.42m3.75-3.75V5.62c0-1.034-.84-1.874-1.874-1.874H5.62A1.874 1.874 0 003.75 5.62v6.18c0 1.034.84 1.874 1.874 1.874h6.18c1.034 0 1.874-.84 1.874-1.874V11.42z" /></svg>',
             'fields' => [
                 'name' => [
-                    'type' => 'select',
-                    'label' => 'Ingredient Name',
-                    'options' => [
-                        // 🥖 Boulangerie / Pains
-                        'Pain Burger (Bun)' => '🍞 Pain Burger (Bun)',
-                        'Pain Brioché' => '🍞 Pain Brioché',
-                        'Galette Tortilla' => '🌯 Galette Tortilla',
-
-                        // Boucherie / Viandes
-                        'Steack Haché de Bœuf' => '🥩 Steack Haché de Bœuf',
-                        'Filet de Poulet' => '🍗 Filet de Poulet',
-                        'Tranches de Bacon' => '🥓 Tranches de Bacon',
-                        'Knacki / Saucisse' => '🌭 Knacki / Saucisse',
-                        'Poisson Pané' => '🐟 Poisson Pané (Fish)',
-
-                        // Fromages / Crèmerie
-                        'Cheddar Tranche' => '🧀 Cheddar Tranche',
-                        'Emmental Tranche' => '🧀 Emmental Tranche',
-                        'Mozzarella Tranche' => '🧀 Mozzarella Tranche',
-                        'Chèvre Tranche' => '🧀 Chèvre Tranche',
-
-                        // Légumes / Frais
-                        'Pomme de terre (Frites)' => '🥔 Pomme de terre (Frites)',
-                        'Salade Verte' => '🥬 Salade Verte',
-                        'Rondelles de Tomate' => '🍅 Rondelles de Tomate',
-                        'Rondelles d\'Oignon' => '🧅 Rondelles d\'Oignon',
-                        'Cornichons (Pickles)' => '🥒 Cornichons (Pickles)',
-                        'Avocat Frais' => '🥑 Avocat Frais',
-
-                        // Boissons
-                        'Canette Coca-Cola 33cl' => '🥤 Canette Coca-Cola 33cl',
-                        'Canette Sprite 33cl' => '🥤 Canette Sprite 33cl',
-                        'Canette Fanta 33cl' => '🥤 Canette Fanta 33cl',
-                        'Bouteille Eau Evian 50cl' => '💧 Bouteille Eau Evian 50cl',
-
-                        // Sauces & Divers
-                        'Huile de friture' => '🛢️ Huile de friture (Litres)',
-                        'Sel' => '🧂 Sel (Grammes)',
-                        'Poivre' => '🧂 Poivre (Grammes)',
-                        'Sauce Ketchup' => '🥫 Sauce Ketchup',
-                        'Sauce Mayonnaise' => '🥫 Sauce Mayonnaise',
-                        'Sauce BBQ' => '🥫 Sauce BBQ',
+                    'type' => 'text', 
+                    'label' => 'Ingredient Name', 
+                    'rules' => 'required|max:255|unique:ingredients,name', 
+                    'searchable' => true
                     ],
-                    'rules' => 'required'
-                ],
 
                 // 🚀 NEW: Relational dropdown linking your raw ingredients to their primary suppliers!
                 'primary_supplier_id' => [
@@ -481,54 +441,208 @@ return [
                     'type' => 'select',
                     'label' => 'Measurement Unit',
                     'options' => [
-                        'unit' => 'Unit (Piece)',
-                        'g' => 'Grams (g)',
-                        'kg' => 'Kilograms (kg)',
-                        'cl' => 'Centiliters (cl)',
-                        'l' => 'Liters (l)',
+                        'g'    => 'Grams (g) - Weight',
+                        'ml'   => 'Milliliters (ml) - Volume',
+                        'unit' => 'Pieces / Units - Count',
                     ],
                     'rules' => 'required'
                 ],
             ]
         ],
 
-        // 🚀 9. Expenses Resource (General operating expenses ledger)
-        'expenses' => [
-            'model' => 'App\Models\Expense',
-            'title' => 'Expenses',
-            'roles' => ['admin', 'super-admin'],
-            'icon' => '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" /></svg>',
+        // ==========================================
+        // 👨‍🍳 4. HUMAN RESOURCES (HRM) GROUP
+        // ==========================================
+        'employees' => [
+            'group'  => 'Human Resources (HRM)',
+            'model'  => 'App\Models\Employee',
+            'title'  => '👨‍🍳 Staff & Employees',
+            'roles'  => ['admin', 'super-admin'],
             'fields' => [
-                'category' => [
+                'first_name' => ['type' => 'text', 'label' => 'First Name', 'rules' => 'required|max:100', 'searchable' => true],
+                'last_name'  => ['type' => 'text', 'label' => 'Last Name', 'rules' => 'required|max:100', 'searchable' => true],
+                'job_title'  => ['type' => 'text', 'label' => 'Job Title (e.g. Head Chef, Cashier)', 'rules' => 'required|max:100', 'searchable' => true],
+                'contract_type' => [
                     'type' => 'select',
-                    'label' => 'Expense Category',
+                    'label' => 'Contract Type',
                     'options' => [
-                        'food_cost' => 'Food Cost (Auto)',
-                        'electricity' => 'Electricity (Public Service)',
-                        'water' => 'Water (Public Service)',
-                        'salaries' => 'Salaries & Personnel',
-                        'rent' => 'Rent & Lease',
-                        'marketing' => 'Publicity & Marketing',
-                        'other' => 'Other Miscellaneous Expenses',
+                        'cdi'        => '🇫🇷 CDI (Permanent)',
+                        'cdd'        => '🇫🇷 CDD (Fixed-Term)',
+                        'extra'      => '🇫🇷 Extra / Seasonal',
+                        'apprenti'   => '🇫🇷 Apprenti',
+                        'full_time'  => '🇬🇧 Full-Time',
+                        'part_time'  => '🇬🇧 Part-Time',
+                        'zero_hours' => '🇬🇧 Zero-Hours Contract',
                     ],
                     'rules' => 'required',
                 ],
-                'description' => ['type' => 'text', 'label' => 'Expense Description', 'rules' => 'required|max:255'],
-                'amount' => ['type' => 'number', 'label' => 'Expense Amount (€)', 'rules' => 'required|numeric|min:0.01'],
+                'contract_hours' => ['type' => 'number', 'label' => 'Contract Weekly Hours (35h, 39h, 42h)', 'rules' => 'required|numeric'],
+                'pay_type' => [
+                    'type' => 'select',
+                    'label' => 'Pay Structure',
+                    'options' => [
+                        'monthly_salary' => 'Fixed Monthly Salary',
+                        'hourly'         => 'Hourly Rate',
+                    ],
+                    'rules' => 'required',
+                ],
+                'base_rate' => ['type' => 'number', 'label' => 'Base Rate (€/month or €/hour)', 'rules' => 'required|numeric'],
+                'phone'     => ['type' => 'text', 'label' => 'Phone Number'],
+                'email'     => ['type' => 'text', 'label' => 'Email Address'],
+                'iban_bank_details' => ['type' => 'text', 'label' => 'IBAN / Bank Details'],
+                'hire_date' => ['type' => 'date', 'label' => 'Hire Date'],
+                'is_active' => ['type' => 'boolean', 'label' => 'Active Staff Member', 'default' => true],
+            ],
+        ],
+
+        'payrolls' => [
+            'group'  => 'Human Resources (HRM)',
+            'model'  => 'App\Models\Payroll',
+            'title'  => '💵 Payroll & Salary Ledger',
+            'roles'  => ['admin', 'super-admin'],
+            'fields' => [
+                'employee_id' => [
+                    'type' => 'select',
+                    'label' => 'Employee',
+                    'relationship' => 'employee',
+                    'option_label' => 'first_name',
+                    'rules' => 'required',
+                ],
+                'period_start' => ['type' => 'date', 'label' => 'Pay Period Start', 'rules' => 'required|date'],
+                'period_end'   => ['type' => 'date', 'label' => 'Pay Period End', 'rules' => 'required|date'],
+                'net_pay'      => ['type' => 'number', 'label' => 'Net Salary (€/£)', 'rules' => 'required|numeric'],
+                'employer_charges' => ['type' => 'number', 'label' => 'Employer Charges (Cotisations Patronales / NI)', 'rules' => 'required|numeric'],
+                'total_employer_cost' => ['type' => 'number', 'label' => 'Total Employer Cost (€/£) - P&L Expense', 'rules' => 'required|numeric'],
+                'status' => [
+                    'type' => 'select',
+                    'label' => 'Payment Status',
+                    'options' => [
+                        'pending'   => '⏳ Pending Approval',
+                        'paid'      => '✅ Paid',
+                        'cancelled' => '❌ Cancelled',
+                    ],
+                    'rules' => 'required',
+                ],
+                'paid_at' => ['type' => 'datetime', 'label' => 'Actual Payment Date'],
+            ],
+        ],
+
+        // ==========================================
+        // 💵 5. BACK-OFFICE & FINANCE GROUP
+        // ==========================================
+        'expense_categories' => [
+            'group'  => 'Back-Office & Finance',
+            'model'  => 'App\Models\ExpenseCategory',
+            'title'  => '🏷️ Expense Categories',
+            'roles'  => ['admin', 'super-admin'],
+            'fields' => [
+                'name' => ['type' => 'text', 'label' => 'Category Name', 'rules' => 'required|max:255', 'searchable' => true],
+                'code' => ['type' => 'text', 'label' => 'Category Code (Unique)', 'rules' => 'required|max:100'],
+                'is_system' => ['type' => 'boolean', 'label' => 'System Category (Protected)'],
+            ],
+        ],
+
+        'expenses' => [
+            'group'  => 'Back-Office & Finance',
+            'model'  => 'App\Models\Expense',
+            'title'  => '💵 Operating Expenses',
+            'roles'  => ['admin', 'super-admin'],
+            'fields' => [
+                'expense_category_id' => [
+                    'type' => 'select',
+                    'label' => 'Expense Category',
+                    'relationship' => 'expenseCategory', // BelongsTo relationship in Expense.php
+                    'option_label' => 'name',
+                    'rules' => 'required',
+                ],
+                'description' => ['type' => 'text', 'label' => 'Description / Vendor', 'rules' => 'required|max:255', 'searchable' => true],
+                'amount' => ['type' => 'number', 'label' => 'Amount (€)', 'rules' => 'required|numeric|min:0.01'],
                 'payment_method' => [
                     'type' => 'select',
                     'label' => 'Payment Method',
                     'options' => [
                         'bank_transfer' => 'Bank Transfer (Standard)',
-                        'card' => 'Credit Card (CB)',
-                        'cash' => 'Cash (Till)',
+                        'card'          => 'Credit Card (CB)',
+                        'cash'          => 'Cash (Till)',
                     ],
                     'rules' => 'required',
                 ],
                 'due_date' => ['type' => 'datetime', 'label' => 'Due Date', 'rules' => 'nullable|date'],
-                'paid_at' => ['type' => 'datetime', 'label' => 'Actual Payment Date (Leave blank if not paid)', 'rules' => 'nullable|date'],
-            ]
+                'paid_at'  => ['type' => 'datetime', 'label' => 'Payment Date (Blank if unpaid)', 'rules' => 'nullable|date'],
+            ],
         ],
+
+        'supplier_purchases' => [
+            'group'  => 'Back-Office & Finance',
+            'title'  => '📦 Supplier Purchase Orders',
+            'route'  => 'admin.purchases.index', // 🚀 Custom route pointing to your PurchaseOrderController
+            'icon'   => '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4" /></svg>',
+        ],
+
+        'wastes' => [
+            'group'  => 'Back-Office & Finance',
+            'model'  => 'App\Models\Waste',
+            'title'  => '🗑️ Food Waste & Inventory Loss',
+            'roles'  => ['admin', 'super-admin'],
+            'fields' => [
+                'ingredient_id' => [
+                    'type' => 'select',
+                    'label' => 'Wasted Ingredient',
+                    'relationship' => 'ingredient',
+                    'option_label' => 'name',
+                    'rules' => 'nullable',
+                ],
+                'product_id' => [
+                    'type' => 'select',
+                    'label' => 'Wasted Finished Product',
+                    'relationship' => 'product',
+                    'option_label' => 'name',
+                    'rules' => 'nullable',
+                ],
+                'quantity_wasted' => ['type' => 'number', 'label' => 'Quantity Wasted', 'rules' => 'required|numeric|min:0.01'],
+                'unit' => [
+                    'type' => 'select',
+                    'label' => 'Unit',
+                    'options' => [
+                        'kg'   => 'Kilograms (kg)',
+                        'g'    => 'Grams (g)',
+                        'l'    => 'Liters (l)',
+                        'cl'   => 'Centiliters (cl)',
+                        'unit' => 'Pieces / Units',
+                    ],
+                    'rules' => 'required',
+                ],
+                'total_loss_amount' => ['type' => 'number', 'label' => 'Total Loss Amount (€)', 'rules' => 'required|numeric'],
+                'reason' => [
+                    'type' => 'select',
+                    'label' => 'Loss Reason',
+                    'options' => [
+                        'spoiled_expired' => '🥀 Spoiled / Expired',
+                        'kitchen_error'   => '🔥 Kitchen / Chef Error',
+                        'damaged'         => '📦 Damaged / Spilled',
+                        'customer_return' => '🍽️ Customer Return / Rejected',
+                    ],
+                    'rules' => 'required',
+                ],
+                'notes' => ['type' => 'textarea', 'label' => 'Notes / Details', 'rules' => 'nullable|string'],
+            ],
+        ],
+
+        'pnl_dashboard' => [
+            'group' => 'Back-Office & Finance',
+            'title' => '📈 Executive P&L Financials',
+            'route' => 'admin.reports.pnl',
+            'icon'  => '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" /></svg>',
+        ],
+
+
+        'recipes_builder' => [
+            'group' => 'Customer Management',
+            'title' => '📖 Recipe Costing & Builder',
+            'route' => 'admin.recipes.index',
+            'icon'  => '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.967 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" /></svg>',
+        ],
+
         // 🗺️ 1. CUSTOM FLOOR PLAN & HOSTESS VIEW LINK
         'floor_plan' => [
             'group'  => 'Restaurant Management',
@@ -601,7 +715,42 @@ return [
             'title'  => '⚙️ Global Store Settings',
             'roles'  => ['admin', 'super-admin'],
             'fields' => [
-                'is_store_open'         => ['type' => 'boolean', 'label' => '🟢 Master Store Open Status'],
+                // 🚀 COUNTRY & REGION SELECTOR
+                'country' => [
+                    'type' => 'select',
+                    'label' => '🇫🇷/🇬🇧 Store Country / Region',
+                    'options' => [
+                        'FR' => '🇫🇷 France (FR)',
+                        'UK' => '🇬🇧 United Kingdom (UK)',
+                    ],
+                    'rules' => 'required',
+                ],
+
+                // 🚀 CURRENCY SELECTOR
+                'currency' => [
+                    'type' => 'select',
+                    'label' => '💶/💷 Store Primary Currency',
+                    'options' => [
+                        'EUR' => '💶 Euro (€)',
+                        'GBP' => '💷 British Pound (£)',
+                    ],
+                    'rules' => 'required',
+                ],
+
+                // 🚀 PAYROLL FREQUENCY SELECTOR
+                'default_payroll_frequency' => [
+                    'type' => 'select',
+                    'label' => '📅 Default Payroll Frequency',
+                    'options' => [
+                        'monthly' => 'Monthly (Standard for France & UK)',
+                        'weekly'  => 'Weekly (Common for UK Hospitality)',
+                    ],
+                    'rules' => 'required',
+                ],
+                'is_store_open'         => [
+                    'type' => 'boolean',
+                    'label' => '🟢 Master Store Open Status'
+                ],
                 'online_orders_enabled' => ['type' => 'boolean', 'label' => '🛍️ Enable Online Orders'],
                 'reservations_enabled'  => ['type' => 'boolean', 'label' => '📅 Enable Table Reservations'],
                 'shift1_start'          => ['type' => 'text', 'label' => 'Shift 1 Start (e.g. 10:00)'],

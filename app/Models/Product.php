@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use HasinHayder\TyroDashboard\Concerns\HasCrud;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Product extends Model
 {
@@ -13,7 +15,7 @@ class Product extends Model
     protected $fillable = [
         'name',
         'description', // 🚀 ADD THIS
-                'allergens',
+        'allergens',
         'ingredients',
         'dietary_flags',
         'calories',
@@ -94,4 +96,24 @@ class Product extends Model
     {
         return $this->belongsTo(Category::class);
     }
+
+       /**
+     * 🚀 RECIPES RELATIONSHIP (Fixes "Call to undefined relationship [recipes]")
+     */
+    public function recipes(): HasMany
+    {
+        return $this->hasMany(Recipe::class);
+    }
+
+    /**
+     * Direct Ingredients relationship via recipes
+     */
+    public function recipeIngredients(): BelongsToMany
+    {
+        return $this->belongsToMany(Ingredient::class, 'recipes')
+                    ->withPivot('quantity')
+                    ->withTimestamps();
+    }
+
+
 }

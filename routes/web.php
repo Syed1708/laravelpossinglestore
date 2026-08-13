@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\KdsController;
 use App\Http\Controllers\Admin\MenuEngineeringController;
 use App\Http\Controllers\Admin\OnlineOrderController;
 use App\Http\Controllers\Admin\OrderController;
+use App\Http\Controllers\Admin\PnlReportController;
 use App\Http\Controllers\Admin\RecipeController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\PurchaseOrderController;
@@ -98,6 +99,9 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::get('/dashboard/orders-archive', [OrderController::class, 'index'])->name('admin.orders.index');
     // 🗺️ Floor Plan & Hostess Screen
     Route::get('/dashboard/reservations/floor-plan', [ReservationController::class, 'floorPlan'])->name('admin.reservations.floor_plan');
+
+    Route::get('/reports/pnl', [PnlReportController::class, 'index'])->name('admin.reports.pnl');
+
 
     // API endpoints for real-time WebSocket payload fetching
     Route::get('/api/kds/orders/chef', [KdsController::class, 'getChefOrders'])->name('admin.kds.orders.chef');
