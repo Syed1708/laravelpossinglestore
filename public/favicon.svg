@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <!-- Dark Zinc Background Box -->
+  <rect width="512" height="512" rx="128" fill="#0f172a"/>
+  
+  <!-- Golden Amber Top Bun -->
+  <path d="M128 220C128 140 185 80 256 80S384 140 384 220H128z" fill="#f59e0b"/>
+  
+  <!-- Sesame Seeds -->
+  <circle cx="200" cy="135" r="9" fill="#fef08a"/>
+  <circle cx="256" cy="115" r="9" fill="#fef08a"/>
+  <circle cx="312" cy="135" r="9" fill="#fef08a"/>
+  <circle cx="228" cy="165" r="9" fill="#fef08a"/>
+  <circle cx="284" cy="165" r="9" fill="#fef08a"/>
+  
+  <!-- Melted Cheddar Cheese -->
+  <path d="M112 230H400L380 270H132L112 230Z" fill="#fbbf24"/>
+  <path d="M180 270L205 310L230 270" fill="#fbbf24"/>
+  <path d="M300 270L325 305L350 270" fill="#fbbf24"/>
+  
+  <!-- Grilled Beef Patty -->
+  <rect x="112" y="270" width="288" height="46" rx="23" fill="#78350f"/>
+  
+  <!-- Crisp Lettuce -->
+  <path d="M128 320C148 332 172 332 192 320C212 332 236 332 256 320C276 332 300 332 320 320C340 332 364 332 384 320V338H128V320Z" fill="#22c55e"/>
+  
+  <!-- Bottom Bun -->
+  <path d="M128 345H384V385C384 407.1 366.1 425 344 425H168C145.9 425 128 407.1 128 385V345Z" fill="#f59e0b"/>
+</svg>

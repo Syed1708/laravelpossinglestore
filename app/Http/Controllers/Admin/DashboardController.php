@@ -4,77 +4,80 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Models\Reservation;
+use App\Models\Ingredient;
 use App\Models\Expense;
-use Illuminate\Http\Request;
+use App\Models\StoreSetting;
 use Carbon\Carbon;
 
 class DashboardController extends Controller
 {
-    /**
-     * Display the dynamic dashboard with real-time date filtering.
-     */
-    public function index(Request $request)
+    public function index()
     {
-        $user = auth()->user();
-        $isAdmin = $user->hasRole('super-admin') || $user->hasRole('admin');
+        $today = Carbon::today('Europe/Paris');
+        $startOfMonth = Carbon::now('Europe/Paris')->startOfMonth();
+        $endOfMonth = Carbon::now('Europe/Paris')->endOfMonth();
 
-          // 🚀 THE FIX: Default to 'month' instead of 'today'
-        $filterType = $request->input('filter_type', 'month');
+        $settings = StoreSetting::getSettings();
+        $currencySymbol = $settings->currency === 'GBP' ? '£' : '€';
 
-        if ($filterType === 'today') {
-            $startDate = Carbon::today()->startOfDay();
-            $endDate = Carbon::today()->endOfDay();
-        } elseif ($filterType === 'week') {
-            // 🚀 NEW: Weekly filter bounds (Monday to Sunday)
-            $startDate = Carbon::now()->startOfWeek();
-            $endDate = Carbon::now()->endOfWeek();
-        } elseif ($filterType === 'custom' && $request->has('start_date') && $request->has('end_date')) {
-            $startDate = Carbon::parse($request->input('start_date'))->startOfDay();
-            $endDate = Carbon::parse($request->input('end_date'))->endOfDay();
-        } else {
-            $filterType = 'month';
-            $startDate = Carbon::now()->startOfMonth();
-            $endDate = Carbon::now()->endOfMonth();
-        }
-
-        // 1. Calculate Revenue (HT & TTC)
-        $revenue = Order::whereBetween('completed_at', [$startDate, $endDate])
-            ->selectRaw('
-                COALESCE(SUM(total_incl_vat), 0) as total_ttc,
-                COALESCE(SUM(subtotal_excl_vat), 0) as total_ht,
-                COALESCE(SUM(vat_amount), 0) as total_tva
-            ')
-            ->first();
-
-        // 2. Calculate Cost of Goods Sold (COGS - Food Cost)
-        $foodCost = Expense::where('category', 'food_cost')
-            ->whereBetween('created_at', [$startDate, $endDate])
-            ->sum('amount');
-
-        // 3. Calculate Operating Expenses (OPEX)
-        $operatingCost = Expense::where('category', '!=', 'food_cost')
-            ->whereBetween('created_at', [$startDate, $endDate])
-            ->sum('amount');
-
-        // 4. Calculate Net Profit
-        $netProfit = $revenue->total_ht - ($foodCost + $operatingCost);
-
-        // 5. Get recent synced orders inside selected date range
-        $recentOrders = Order::whereBetween('completed_at', [$startDate, $endDate])
-            ->orderBy('completed_at', 'desc')
-            ->limit(10)
+        // 1. TODAY'S SALES & ORDERS
+        $todayOrders = Order::whereDate('created_at', $today)
+            ->whereNotIn('status', ['refunded', 'cancelled'])
             ->get();
 
-        return view('admin.dashboard', [
-            'revenue' => $revenue,
-            'foodCost' => $foodCost,
-            'operatingCost' => $operatingCost,
-            'netProfit' => $netProfit,
-            'recentOrders' => $recentOrders,
-            'isAdmin' => $isAdmin,
-            'filterType' => $filterType,
-            'startDate' => $startDate->format('Y-m-d'),
-            'endDate' => $endDate->format('Y-m-d'),
-        ]);
+        $todayRevenue = $todayOrders->sum('total_incl_vat');
+        $todayOrderCount = $todayOrders->count();
+
+        // Sales Channel Breakdown Today
+        $onlineCount   = $todayOrders->whereIn('order_type', ['click_and_collect', 'online'])->count();
+        $takeawayCount = $todayOrders->where('order_type', 'takeaway')->count();
+        $dineInCount   = $todayOrders->where('order_type', 'dine_in')->count();
+
+        // 2. LIVE DISPATCHER & RESERVATIONS QUEUE
+        $pendingOnlineOrders = Order::where('preparation_status', 'not_accepted')
+            ->whereIn('order_type', ['click_and_collect', 'online'])
+            ->with('items')
+            ->latest()
+            ->take(5)
+            ->get();
+
+        $todayReservations = Reservation::whereDate('reservation_date', $today)
+            ->whereIn('status', ['confirmed', 'seated'])
+            ->with('table')
+            ->orderBy('reservation_time', 'asc')
+            ->take(5)
+            ->get();
+
+        // 3. LOW INVENTORY STOCK ALERTS
+        $lowStockIngredients = Ingredient::whereColumn('stock_level', '<=', 'alert_level')
+            ->orderBy('stock_level', 'asc')
+            ->get();
+
+        // 4. MONTHLY FINANCIAL P&L SUMMARY
+        $monthSalesHt = Order::whereBetween('created_at', [$startOfMonth, $endOfMonth])
+            ->whereNotIn('status', ['refunded', 'cancelled'])
+            ->sum('subtotal_excl_vat');
+
+        $monthExpenses = Expense::whereBetween('paid_at', [$startOfMonth, $endOfMonth])
+            ->sum('amount');
+
+        $monthNetProfit = $monthSalesHt - $monthExpenses;
+
+        return view('admin.dashboard', compact(
+            'currencySymbol',
+            'settings',
+            'todayRevenue',
+            'todayOrderCount',
+            'onlineCount',
+            'takeawayCount',
+            'dineInCount',
+            'pendingOnlineOrders',
+            'todayReservations',
+            'lowStockIngredients',
+            'monthSalesHt',
+            'monthExpenses',
+            'monthNetProfit'
+        ));
     }
 }

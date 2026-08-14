@@ -63,6 +63,9 @@ return [
         'logo' => env('TYRO_DASHBOARD_LOGO', null),
         'logo_height' => env('TYRO_DASHBOARD_LOGO_HEIGHT', '32px'),
         'favicon' => env('TYRO_DASHBOARD_FAVICON', null),
+        // 'favicon' => env('TYRO_DASHBOARD_FAVICON', '/favicon.svg'),
+            // 'favicon'  => '/favicon.svg', // 🚀 Points to public/favicon.svg
+
 
         // Sidebar colors (supports any CSS color value: hex, rgb, hsl, etc.)
         'sidebar_bg' => env('TYRO_DASHBOARD_SIDEBAR_BG', null), // Custom background color for sidebar
