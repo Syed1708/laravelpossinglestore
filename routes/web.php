@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AdminSettingsController;
 use Illuminate\Support\Facades\Route;
 
 
@@ -102,6 +103,17 @@ Route::middleware(['web', 'auth'])->group(function () {
 
     Route::get('/reports/pnl', [PnlReportController::class, 'index'])->name('admin.reports.pnl');
 
+    // ⚙️ 1. General & Operations Settings
+    Route::get('/settings/general', [AdminSettingsController::class, 'general'])->name('admin.settings.general');
+    Route::put('/settings/general', [AdminSettingsController::class, 'updateGeneral'])->name('admin.settings.update_general');
+
+    // 🏠 2. Homepage Builder Settings
+    Route::get('/settings/homepage', [AdminSettingsController::class, 'homepage'])->name('admin.settings.homepage');
+    Route::put('/settings/homepage', [AdminSettingsController::class, 'updateHomepage'])->name('admin.settings.update_homepage');
+
+    // 🎨 3. Theme & UI Settings
+    Route::get('/settings/theme', [AdminSettingsController::class, 'theme'])->name('admin.settings.theme');
+    Route::put('/settings/theme', [AdminSettingsController::class, 'updateTheme'])->name('admin.settings.update_theme');
 
     // API endpoints for real-time WebSocket payload fetching
     Route::get('/api/kds/orders/chef', [KdsController::class, 'getChefOrders'])->name('admin.kds.orders.chef');

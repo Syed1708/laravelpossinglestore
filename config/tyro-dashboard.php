@@ -523,7 +523,7 @@ return [
                     ],
                     'rules' => 'required',
                 ],
-                'paid_at' => ['type' => 'datetime', 'label' => 'Actual Payment Date'],
+                'paid_at' => ['type' => 'date', 'label' => 'Actual Payment Date'],
             ],
         ],
 
@@ -567,8 +567,8 @@ return [
                     ],
                     'rules' => 'required',
                 ],
-                'due_date' => ['type' => 'datetime', 'label' => 'Due Date', 'rules' => 'nullable|date'],
-                'paid_at'  => ['type' => 'datetime', 'label' => 'Payment Date (Blank if unpaid)', 'rules' => 'nullable|date'],
+                'due_date' => ['type' => 'date', 'label' => 'Due Date', 'rules' => 'nullable|date'],
+                'paid_at'  => ['type' => 'date', 'label' => 'Payment Date (Blank if unpaid)', 'rules' => 'nullable|date'],
             ],
         ],
 
@@ -604,11 +604,9 @@ return [
                     'type' => 'select',
                     'label' => 'Unit',
                     'options' => [
-                        'kg'   => 'Kilograms (kg)',
-                        'g'    => 'Grams (g)',
-                        'l'    => 'Liters (l)',
-                        'cl'   => 'Centiliters (cl)',
-                        'unit' => 'Pieces / Units',
+                        'g'    => 'Grams (g) - Weight',
+                        'ml'   => 'Milliliters (ml) - Volume',
+                        'unit' => 'Pieces / Units - Count',
                     ],
                     'rules' => 'required',
                 ],
@@ -708,58 +706,29 @@ return [
             ],
         ],
 
-        // ⚙️ 4. GLOBAL STORE SETTINGS
-        'store_settings' => [
-            'group'  => 'Restaurant Management',
-            'model'  => 'App\Models\StoreSetting',
-            'title'  => '⚙️ Global Store Settings',
-            'roles'  => ['admin', 'super-admin'],
-            'fields' => [
-                // 🚀 COUNTRY & REGION SELECTOR
-                'country' => [
-                    'type' => 'select',
-                    'label' => '🇫🇷/🇬🇧 Store Country / Region',
-                    'options' => [
-                        'FR' => '🇫🇷 France (FR)',
-                        'UK' => '🇬🇧 United Kingdom (UK)',
-                    ],
-                    'rules' => 'required',
-                ],
+    // ⚙️ 1. GENERAL & OPERATIONS
+    'settings_general' => [
+        'group'  => 'Settings & Customization',
+        'title'  => '⚙️ General & Operations',
+        'route'  => 'admin.settings.general',
+        'icon'   => '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 18H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 12h11.25" /></svg>',
+    ],
 
-                // 🚀 CURRENCY SELECTOR
-                'currency' => [
-                    'type' => 'select',
-                    'label' => '💶/💷 Store Primary Currency',
-                    'options' => [
-                        'EUR' => '💶 Euro (€)',
-                        'GBP' => '💷 British Pound (£)',
-                    ],
-                    'rules' => 'required',
-                ],
+    // 🏠 2. HOMEPAGE BUILDER
+    'settings_homepage' => [
+        'group'  => 'Settings & Customization',
+        'title'  => '🏠 Homepage Builder',
+        'route'  => 'admin.settings.homepage',
+        'icon'   => '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg>',
+    ],
 
-                // 🚀 PAYROLL FREQUENCY SELECTOR
-                'default_payroll_frequency' => [
-                    'type' => 'select',
-                    'label' => '📅 Default Payroll Frequency',
-                    'options' => [
-                        'monthly' => 'Monthly (Standard for France & UK)',
-                        'weekly'  => 'Weekly (Common for UK Hospitality)',
-                    ],
-                    'rules' => 'required',
-                ],
-                'is_store_open'         => [
-                    'type' => 'boolean',
-                    'label' => '🟢 Master Store Open Status'
-                ],
-                'online_orders_enabled' => ['type' => 'boolean', 'label' => '🛍️ Enable Online Orders'],
-                'reservations_enabled'  => ['type' => 'boolean', 'label' => '📅 Enable Table Reservations'],
-                'shift1_start'          => ['type' => 'text', 'label' => 'Shift 1 Start (e.g. 10:00)'],
-                'shift1_end'            => ['type' => 'text', 'label' => 'Shift 1 End (e.g. 14:30)'],
-                'shift2_start'          => ['type' => 'text', 'label' => 'Shift 2 Start (e.g. 18:30)'],
-                'shift2_end'            => ['type' => 'text', 'label' => 'Shift 2 End (e.g. 22:30)'],
-                'closed_message'        => ['type' => 'text', 'label' => 'Closure Message Shown to Customers'],
-            ],
-        ],
+    // 🎨 3. THEME & UI STYLING
+    'settings_theme' => [
+        'group'  => 'Settings & Customization',
+        'title'  => '🎨 Theme & Branding',
+        'route'  => 'admin.settings.theme',
+        'icon'   => '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.098 19.902a3.75 3.75 0 005.304 0l6.401-6.402M6.75 21A3.75 3.75 0 013 17.25V4.125C3 3.504 3.504 3 4.125 3h5.25c.621 0 1.125.504 1.125 1.125v4.072M6.75 21a3.75 3.75 0 003.75-3.75V8.197M6.75 21h13.125c.621 0 1.125-.504 1.125-1.125v-5.25c0-.621-.504-1.125-1.125-1.125h-4.072" /></svg>',
+    ],
 
 
 

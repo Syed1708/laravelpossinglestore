@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\v1\Pos\PosSalesApiController;
 use App\Http\Controllers\Api\v1\staff\AuthController;
 use App\Http\Controllers\ReservationController;
 use App\Models\Product;
+use App\Models\StoreSetting;
 
 /*
 |--------------------------------------------------------------------------
@@ -95,9 +96,9 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 
-
+// ⚡ 1. FAST REAL-TIME STORE STATUS (For Cart & Booking Form Protection)
 Route::get('/store-status', function () {
-    $settings = \App\Models\StoreSetting::getSettings();
+    $settings = StoreSetting::getSettings();
 
     return response()->json([
         'is_open'               => StoreHoursHelper::isOpen(),              // Open right now at this minute
@@ -106,6 +107,17 @@ Route::get('/store-status', function () {
         'reservations_enabled'  => StoreHoursHelper::canAcceptReservations(), // Master ON + Reservations ON
         'schedule'              => StoreHoursHelper::getScheduleText(),
         'closed_message'        => StoreHoursHelper::getClosedMessage(),
+    ]);
+});
+
+// 🎨 2. FULL SITE BRANDING & CMS SETTINGS (For Next.js Homepage & Theme)
+Route::get('/site-settings', function () {
+    $settings = StoreSetting::getSettings();
+
+    return response()->json([
+        ...$settings->toArray(),
+        'logo_url'    => $settings->logo_path ? asset('storage/' . $settings->logo_path) : null,
+        'favicon_url' => $settings->favicon_path ? asset('storage/' . $settings->favicon_path) : null,
     ]);
 });
 // Public Customer Reservation Endpoints
