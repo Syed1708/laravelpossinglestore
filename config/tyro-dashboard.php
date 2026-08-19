@@ -64,7 +64,7 @@ return [
         'logo_height' => env('TYRO_DASHBOARD_LOGO_HEIGHT', '32px'),
         'favicon' => env('TYRO_DASHBOARD_FAVICON', null),
         // 'favicon' => env('TYRO_DASHBOARD_FAVICON', '/favicon.svg'),
-            // 'favicon'  => '/favicon.svg', // 🚀 Points to public/favicon.svg
+        // 'favicon'  => '/favicon.svg', // 🚀 Points to public/favicon.svg
 
 
         // Sidebar colors (supports any CSS color value: hex, rgb, hsl, etc.)
@@ -415,11 +415,11 @@ return [
             'icon' => '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.83m-3.703 3.75l-5.877-5.83a2.652 2.652 0 00-3.75 3.75l5.877 5.83m3.703-3.75V11.42m0 3.75H11.42m3.75-3.75V5.62c0-1.034-.84-1.874-1.874-1.874H5.62A1.874 1.874 0 003.75 5.62v6.18c0 1.034.84 1.874 1.874 1.874h6.18c1.034 0 1.874-.84 1.874-1.874V11.42z" /></svg>',
             'fields' => [
                 'name' => [
-                    'type' => 'text', 
-                    'label' => 'Ingredient Name', 
-                    'rules' => 'required|max:255|unique:ingredients,name', 
+                    'type' => 'text',
+                    'label' => 'Ingredient Name',
+                    'rules' => 'required|max:255|unique:ingredients,name',
                     'searchable' => true
-                    ],
+                ],
 
                 // 🚀 NEW: Relational dropdown linking your raw ingredients to their primary suppliers!
                 'primary_supplier_id' => [
@@ -636,6 +636,31 @@ return [
             'icon'  => '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" /></svg>',
         ],
 
+        'coupons' => [
+            'group'  => 'Back-Office & Finance',
+            'model'  => 'App\Models\Coupon',
+            'title'  => '🎟️ Promo Codes & Coupons',
+            'roles'  => ['admin', 'super-admin'],
+            'fields' => [
+                'code' => ['type' => 'text', 'label' => 'Promo Code (e.g. WELCOME10)', 'rules' => 'required|max:50', 'searchable' => true],
+                'type' => [
+                    'type' => 'select',
+                    'label' => 'Discount Type',
+                    'options' => [
+                        'percent' => 'Percentage OFF (%)',
+                        'fixed'   => 'Fixed Amount OFF (€)',
+                    ],
+                    'rules' => 'required',
+                ],
+                'value' => ['type' => 'number', 'label' => 'Discount Value (% or €)', 'rules' => 'required|numeric|min:0.01'],
+                'min_order_amount' => ['type' => 'number', 'label' => 'Min Order Amount (€)', 'default' => 0.00],
+                'max_uses' => ['type' => 'number', 'label' => 'Max Total Uses (Blank = Unlimited)'],
+                'uses_count' => ['type' => 'number', 'label' => 'Times Used So Far', 'readonly' => true],
+                'expires_at' => ['type' => 'date', 'label' => 'Expiration Date'],
+                'is_active'  => ['type' => 'boolean', 'label' => 'Active', 'default' => true],
+            ],
+        ],
+
 
         'recipes_builder' => [
             'group' => 'Customer Management',
@@ -709,29 +734,29 @@ return [
             ],
         ],
 
-    // ⚙️ 1. GENERAL & OPERATIONS
-    'settings_general' => [
-        'group'  => 'Settings & Customization',
-        'title'  => '⚙️ General & Operations',
-        'route'  => 'admin.settings.general',
-        'icon'   => '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 18H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 12h11.25" /></svg>',
-    ],
+        // ⚙️ 1. GENERAL & OPERATIONS
+        'settings_general' => [
+            'group'  => 'Settings & Customization',
+            'title'  => '⚙️ General & Operations',
+            'route'  => 'admin.settings.general',
+            'icon'   => '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 18H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 12h11.25" /></svg>',
+        ],
 
-    // 🏠 2. HOMEPAGE BUILDER
-    'settings_homepage' => [
-        'group'  => 'Settings & Customization',
-        'title'  => '🏠 Homepage Builder',
-        'route'  => 'admin.settings.homepage',
-        'icon'   => '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg>',
-    ],
+        // 🏠 2. HOMEPAGE BUILDER
+        'settings_homepage' => [
+            'group'  => 'Settings & Customization',
+            'title'  => '🏠 Homepage Builder',
+            'route'  => 'admin.settings.homepage',
+            'icon'   => '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg>',
+        ],
 
-    // 🎨 3. THEME & UI STYLING
-    'settings_theme' => [
-        'group'  => 'Settings & Customization',
-        'title'  => '🎨 Theme & Branding',
-        'route'  => 'admin.settings.theme',
-        'icon'   => '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.098 19.902a3.75 3.75 0 005.304 0l6.401-6.402M6.75 21A3.75 3.75 0 013 17.25V4.125C3 3.504 3.504 3 4.125 3h5.25c.621 0 1.125.504 1.125 1.125v4.072M6.75 21a3.75 3.75 0 003.75-3.75V8.197M6.75 21h13.125c.621 0 1.125-.504 1.125-1.125v-5.25c0-.621-.504-1.125-1.125-1.125h-4.072" /></svg>',
-    ],
+        // 🎨 3. THEME & UI STYLING
+        'settings_theme' => [
+            'group'  => 'Settings & Customization',
+            'title'  => '🎨 Theme & Branding',
+            'route'  => 'admin.settings.theme',
+            'icon'   => '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.098 19.902a3.75 3.75 0 005.304 0l6.401-6.402M6.75 21A3.75 3.75 0 013 17.25V4.125C3 3.504 3.504 3 4.125 3h5.25c.621 0 1.125.504 1.125 1.125v4.072M6.75 21a3.75 3.75 0 003.75-3.75V8.197M6.75 21h13.125c.621 0 1.125-.504 1.125-1.125v-5.25c0-.621-.504-1.125-1.125-1.125h-4.072" /></svg>',
+        ],
 
 
 

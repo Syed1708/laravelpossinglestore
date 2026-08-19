@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\OrderSyncController;
 use App\Http\Controllers\Api\MenuController;
 use App\Http\Controllers\Api\v1\client\ClientAuthController;
+use App\Http\Controllers\Api\v1\client\CouponApiController;
 use App\Http\Controllers\Api\v1\client\StripeWebController;
 use App\Http\Controllers\Api\v1\Pos\DayClosureApiController;
 use App\Http\Controllers\Api\v1\Pos\PosSalesApiController;
@@ -139,3 +140,6 @@ Route::get('/products/{product}', function (Product $product) {
         'data'    => $product
     ]);
 });
+
+
+Route::post('/coupons/validate', [CouponApiController::class, 'validateCoupon']);

@@ -13,23 +13,28 @@ class Order extends Model
     protected $fillable = [
         'uuid',
         'payment_intent_id',
-        'user_id',
         'client_id',
-        'order_type',     // 🚀 Added (dine_in, takeaway, click_and_collect)
-        'customer_name',  // 🚀 Added
-        'customer_phone', // 🚀 Added
-        'daily_closure_id',
+        'customer_name',
+        'customer_phone',
+        'order_type',
         'sequence_number',
+        
+        // 🚀 MUST BE LISTED HERE SO ELOQUENT DOES NOT DROP THEM!
+        'coupon_code',
+        'discount_amount',
+        'points_redeemed',
+        'points_earned',
+
         'subtotal_excl_vat',
         'vat_amount',
         'total_incl_vat',
         'hash',
         'previous_hash',
-        'status',
         'completed_at',
-        'preparation_status', // 'not_accepted', 'accepted', 'preparing', 'ready', 'delivered', 'cancelled'
-        'estimated_prep_time', // 🚀 Added (minutes)
-        'estimated_ready_at',   // 🚀 Added (datetime)
+        'preparation_status',
+        'estimated_prep_time',
+        'estimated_ready_at',
+        'status',
     ];
 
     protected $casts = [

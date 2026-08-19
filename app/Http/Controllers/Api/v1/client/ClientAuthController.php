@@ -32,6 +32,7 @@ class ClientAuthController extends Controller
                 'name' => $client->name,
                 'email' => $client->email,
                 'phone' => $client->phone,
+                'loyalty_points' => (int) ($client->loyalty_points ?? 0), // 🚀 Include loyalty points in response
             ],
             'token' => $token,
         ]);
@@ -93,7 +94,8 @@ class ClientAuthController extends Controller
 
         return response()->json([
             'success' => true,
-            'client' => $client
+            'client' => $client,
+            'loyalty_points' => (int) ($client->loyalty_points ?? 0), // 🚀 Included at root level too!
         ]);
     }
 }
