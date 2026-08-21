@@ -759,6 +759,112 @@ return [
         ],
 
 
+        'menu_engineering' => [
+            'group' => 'Back-Office & Finance',
+            'title' => '🤖 AI Menu Engineering',
+            'route' => 'admin.menu_engineering.index',
+            'icon'  => '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3v11.25A2.25 2.25 0 006 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0118 16.5h-2.25m-7.5 0h7.5m-7.5 0l-1.5-3m8.25 3l1.5-3m-10.5 0h10.5" /></svg>',
+        ],
+
+        'reports' => [
+            'group' => 'Back-Office & Finance',
+            'title' => '📊 Reports & Analytics',
+            'route' => 'admin.reports.index',
+            'icon'  => '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3v11.25A2.25 2.25 0 006 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0118 16.5h-2.25m-7.5 0h7.5m-7.5 0l-1.5-3m8.25 3l1.5-3m-10.5 0h10.5" /></svg>',
+        ],
+
+
+
+        // 📋 1. OPTION GROUPS (Wizard Steps: Meats, Sauces, Crusts, Toppings)
+        'option_groups' => [
+            'group'  => 'Customer Management',
+            'model'  => 'App\Models\OptionGroup',
+            'title'  => '📋 Option Groups (Kiosk Steps)',
+            'roles'  => ['admin', 'super-admin'],
+            'fields' => [
+                'name' => [
+                    'type' => 'text',
+                    'label' => 'Step Name (e.g. Choose Your Meats, Select Sauces)',
+                    'rules' => 'required|max:255',
+                    'searchable' => true
+                ],
+                'selection_type' => [
+                    'type' => 'select',
+                    'label' => 'Selection Type',
+                    'options' => [
+                        'single_select' => 'Single Choice (Radio Buttons)',
+                        'multi_select'  => 'Multiple Choices (Checkboxes)',
+                    ],
+                    'rules' => 'required',
+                ],
+                'is_required' => [
+                    'type' => 'boolean',
+                    'label' => 'Required Step (Customer must pick before proceeding)',
+                    'default' => true,
+                ],
+                'min_selections' => [
+                    'type' => 'number',
+                    'label' => 'Minimum Choices Required',
+                    'default' => 0,
+                ],
+                'max_selections' => [
+                    'type' => 'number',
+                    'label' => 'Maximum Choices Allowed (0 = Unlimited)',
+                    'default' => 1,
+                ],
+                'free_choice_limit' => [
+                    'type' => 'number',
+                    'label' => 'Default Free Allowance (e.g. 1 Free Meat)',
+                    'default' => 0,
+                ],
+            ],
+        ],
+
+        // 🌶️ 2. OPTIONS (Individual Choices: Bœuf, Cordon Bleu, Truffle Mayo)
+        'options' => [
+            'group'  => 'Customer Management',
+            'model'  => 'App\Models\Option',
+            'title'  => '🌶️ Options & Toppings',
+            'roles'  => ['admin', 'super-admin'],
+            'fields' => [
+                'option_group_id' => [
+                    'type' => 'select',
+                    'label' => 'Option Group (Parent Step)',
+                    'relationship' => 'optionGroup',
+                    'option_label' => 'name',
+                    'rules' => 'required',
+                ],
+                'name' => [
+                    'type' => 'text',
+                    'label' => 'Option Name (e.g. Bœuf, Poulet, Extra Cheddar)',
+                    'rules' => 'required|max:255',
+                    'searchable' => true,
+                ],
+                'extra_price' => [
+                    'type' => 'number',
+                    'label' => 'Extra Price (€/£) beyond free limit',
+                    'default' => 0.00,
+                ],
+                'image_path' => [
+                    'type' => 'file',
+                    'label' => 'Option Image Tile for Touch Kiosk',
+                    'rules' => 'nullable|image|max:2048',
+                ],
+                'is_active' => [
+                    'type' => 'boolean',
+                    'label' => 'Active and Displayed on Kiosk',
+                    'default' => true,
+                ],
+            ],
+        ],
+
+        'product_steps' => [
+            'group' => 'Customer Management',
+            'title' => '⚙️ Product Kiosk Steps',
+            'route' => 'admin.product_steps.index',
+            'icon'  => '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 18H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 12h11.25" /></svg>',
+        ],
+
 
 
     ],

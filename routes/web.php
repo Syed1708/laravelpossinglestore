@@ -1,88 +1,33 @@
 <?php
 
-use App\Http\Controllers\Admin\AdminSettingsController;
 use Illuminate\Support\Facades\Route;
 
-
-use App\Http\Controllers\Admin\DailyClosureController;
+// Admin Controllers
 use App\Http\Controllers\Admin\DashboardController;
-use App\Http\Controllers\Admin\KdsController;
-use App\Http\Controllers\Admin\MenuEngineeringController;
 use App\Http\Controllers\Admin\OnlineOrderController;
 use App\Http\Controllers\Admin\OrderController;
-use App\Http\Controllers\Admin\PnlReportController;
+use App\Http\Controllers\Admin\KdsController;
 use App\Http\Controllers\Admin\RecipeController;
-use App\Http\Controllers\Admin\ReportController;
+use App\Http\Controllers\Admin\ProductStepController;
 use App\Http\Controllers\Admin\PurchaseOrderController;
+use App\Http\Controllers\Admin\PnlReportController;
+use App\Http\Controllers\Admin\MenuEngineeringController;
+use App\Http\Controllers\Admin\ReportController;
+use App\Http\Controllers\Admin\DailyClosureController;
+use App\Http\Controllers\Admin\AdminSettingsController;
 use App\Http\Controllers\ReservationController;
+
+/*
+|--------------------------------------------------------------------------
+| 🌐 1. PUBLIC WEB ROUTES
+|--------------------------------------------------------------------------
+*/
 
 Route::get('/', function () {
     return view('welcome');
 });
 
-
-// 🚀 Override Tyro's default home route to display our custom POS analytics
-Route::middleware(['web', 'auth'])
-    ->get('/dashboard', [DashboardController::class, 'index'])
-    ->name('tyro-dashboard.index'); // 🚀 This name must match Tyro's configuration!
-
-// Z-Report Actions
-Route::middleware(['web', 'auth'])->group(function () {
-    Route::post('/admin/closures/close', [DailyClosureController::class, 'closeDay'])->name('admin.closures.close');
-});
-
-
-Route::middleware(['web', 'auth'])->group(function () {
-    // Reports dashboard
-    Route::get('/admin/reports', [ReportController::class, 'index'])->name('admin.reports.index');
-
-    // PDF generator route
-    Route::get('/admin/reports/pdf', [ReportController::class, 'downloadPdf'])->name('admin.reports.pdf');
-});
-
-
-Route::middleware(['web', 'auth'])->group(function () {
-    // Custom Recipe Builder routes
-    Route::get('/admin/recipes', [RecipeController::class, 'index'])->name('admin.recipes.index');
-    Route::get('/admin/recipes/{product}', [RecipeController::class, 'show'])->name('admin.recipes.show');
-    Route::post('/admin/recipes/{product}/ingredients', [RecipeController::class, 'store'])->name('admin.recipes.store');
-    Route::delete('/admin/recipes/{product}/ingredients/{recipe}', [RecipeController::class, 'destroy'])->name('admin.recipes.destroy');
-});
-
-
-
-Route::middleware(['web', 'auth'])->group(function () {
-    // Custom Purchase Order CRUD
-    Route::get('/admin/purchases', [PurchaseOrderController::class, 'index'])->name('admin.purchases.index');
-    Route::get('/admin/purchases/create', [PurchaseOrderController::class, 'create'])->name('admin.purchases.create');
-    Route::post('/admin/purchases', [PurchaseOrderController::class, 'store'])->name('admin.purchases.store');
-    Route::get('/admin/purchases/{purchase}', [PurchaseOrderController::class, 'show'])->name('admin.purchases.show');
-    Route::post('/admin/purchases/{purchase}/receive', [PurchaseOrderController::class, 'receive'])->name('admin.purchases.receive');
-    Route::delete('/admin/purchases/{purchase}', [PurchaseOrderController::class, 'destroy'])->name('admin.purchases.destroy');
-    // 🚀 NEW: Cancel/Reject Delivery Route
-    Route::post('/admin/purchases/{purchase}/cancel', [PurchaseOrderController::class, 'cancel'])->name('admin.purchases.cancel');
-});
-
-Route::middleware(['web', 'auth'])->group(function () {
-    // Custom Menu Engineering & Profitability route
-    Route::get('/admin/menu-engineering', [MenuEngineeringController::class, 'index'])->name('admin.menu-engineering.index');
-});
-
-Route::prefix('admin')->middleware(['auth'])->group(function () {
-    Route::get('/orders/online-management', [OnlineOrderController::class, 'index'])->name('admin.orders.online');
-    Route::get('/orders/online-grid', function () {
-        return view('admin.orders.onlinegrid');
-    })->name('admin.orders.online-grid');
-
-    // 🚀 Admin API Endpoints (Authorized via Web Session Cookie)
-    Route::get('/api/online-orders', [OnlineOrderController::class, 'getOnlineOrders']);
-    Route::post('/api/online-orders/{order}/accept', [OnlineOrderController::class, 'acceptOrder']);
-    Route::post('/api/online-orders/{order}/reject', [OnlineOrderController::class, 'rejectOrder']);
-});
-
-// routes/web.php
-
-// 🚀 Dynamic Language Switcher Route
+// Dynamic Language Switcher Route
 Route::get('/lang/{locale}', function ($locale) {
     if (in_array($locale, ['en', 'fr'])) {
         session()->put('locale', $locale);
@@ -91,41 +36,128 @@ Route::get('/lang/{locale}', function ($locale) {
 })->name('lang.switch');
 
 
+/*
+|--------------------------------------------------------------------------
+| 🛡️ 2. AUTHENTICATED ADMIN DASHBOARD ROUTES
+|--------------------------------------------------------------------------
+| All admin, cashier, kitchen, and hostess screens share a single, clean,
+| session-protected middleware group.
+*/
+
 Route::middleware(['web', 'auth'])->group(function () {
-    // ... other routes ...
 
-    // Real-Time Kitchen Display Views
-    Route::get('/dashboard/kds/chef', [KdsController::class, 'chefIndex'])->name('admin.kds.chef');
-    Route::get('/dashboard/kds/packer', [KdsController::class, 'packerIndex'])->name('admin.kds.packer');
-    Route::get('/dashboard/orders-archive', [OrderController::class, 'index'])->name('admin.orders.index');
-    // 🗺️ Floor Plan & Hostess Screen
-    Route::get('/dashboard/reservations/floor-plan', [ReservationController::class, 'floorPlan'])->name('admin.reservations.floor_plan');
+    // 🚀 Dashboard Command Center (Overrides Tyro's default home route)
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('tyro-dashboard.index');
 
-    Route::get('/reports/pnl', [PnlReportController::class, 'index'])->name('admin.reports.pnl');
+    // -------------------------------------------------------------
+    // 📦 A. MANAGE ORDERS & DISPATCHER
+    // -------------------------------------------------------------
+    Route::prefix('admin')->group(function () {
+        Route::get('/orders/online-management', [OnlineOrderController::class, 'index'])->name('admin.orders.online');
+        Route::get('/orders/online-grid', function () {
+            return view('admin.orders.onlinegrid');
+        })->name('admin.orders.online-grid');
 
-    // ⚙️ 1. General & Operations Settings
-    Route::get('/settings/general', [AdminSettingsController::class, 'general'])->name('admin.settings.general');
-    Route::put('/settings/general', [AdminSettingsController::class, 'updateGeneral'])->name('admin.settings.update_general');
+        // Orders Archive
+        Route::get('/orders-archive', [OrderController::class, 'index'])->name('admin.orders.index');
 
-    // 🏠 2. Homepage Builder Settings
-    Route::get('/settings/homepage', [AdminSettingsController::class, 'homepage'])->name('admin.settings.homepage');
-    Route::put('/settings/homepage', [AdminSettingsController::class, 'updateHomepage'])->name('admin.settings.update_homepage');
+        // Admin Online Dispatcher API Endpoints
+        Route::get('/api/online-orders', [OnlineOrderController::class, 'getOnlineOrders']);
+        Route::post('/api/online-orders/{order}/accept', [OnlineOrderController::class, 'acceptOrder']);
+        Route::post('/api/online-orders/{order}/reject', [OnlineOrderController::class, 'rejectOrder']);
+    });
 
-    // 🎨 3. Theme & UI Settings
-    Route::get('/settings/theme', [AdminSettingsController::class, 'theme'])->name('admin.settings.theme');
-    Route::put('/settings/theme', [AdminSettingsController::class, 'updateTheme'])->name('admin.settings.update_theme');
+    // -------------------------------------------------------------
+    // 👨‍🍳 B. KITCHEN DISPLAY SYSTEM (KDS)
+    // -------------------------------------------------------------
+    Route::prefix('admin/kds')->group(function () {
+        Route::get('/chef', [KdsController::class, 'chefIndex'])->name('admin.kds.chef');
+        Route::get('/packer', [KdsController::class, 'packerIndex'])->name('admin.kds.packer');
 
-    // API endpoints for real-time WebSocket payload fetching
-    Route::get('/api/kds/orders/chef', [KdsController::class, 'getChefOrders'])->name('admin.kds.orders.chef');
-    Route::get('/api/kds/orders/packer', [KdsController::class, 'getPackerOrders'])->name('admin.kds.orders.packer');
+        // Route::post('/api/orders/{order}/status', [KdsController::class, 'updateOrderStatus'])->name('admin.kds.order.update');
+    });
 
-    // Status update endpoints
+    // 🚀 KDS Order Status Update Route with out admin prefix
+    // KDS API Endpoints
+    Route::get('/api/orders/chef', [KdsController::class, 'getChefOrders'])->name('admin.kds.orders.chef');
+    Route::get('/api/orders/packer', [KdsController::class, 'getPackerOrders'])->name('admin.kds.orders.packer');
+    Route::post('/api/kds/orders/{order}/status', [App\Http\Controllers\Admin\KdsController::class, 'updateOrderStatus'])->name('admin.kds.order.update');
     Route::post('/api/kds/items/{item}/toggle', [KdsController::class, 'toggleItemStatus'])->name('admin.kds.item.toggle');
-    Route::post('/api/kds/orders/{order}/status', [KdsController::class, 'updateOrderStatus'])->name('admin.kds.order.update');
-});
 
-Route::prefix('admin')->middleware(['web', 'auth'])->group(function () {
-    Route::get('/api/reservations/by-date', [ReservationController::class, 'getReservationsByDate']);
-    Route::post('/api/reservations/phone-booking', [ReservationController::class, 'storePhoneBooking']);
-    Route::post('/api/reservations/{reservation}/status', [ReservationController::class, 'updateStatus']);
+    // -------------------------------------------------------------
+    // 🗺️ C. TABLE FLOOR PLAN & HOSTESS RESERVATIONS
+    // -------------------------------------------------------------
+    Route::prefix('admin')->group(function () {
+        Route::get('/reservations/floor-plan', [ReservationController::class, 'floorPlan'])->name('admin.reservations.floor_plan');
+
+        // Hostess API Endpoints
+        Route::get('/api/reservations/by-date', [ReservationController::class, 'getReservationsByDate']);
+        Route::post('/api/reservations/phone-booking', [ReservationController::class, 'storePhoneBooking']);
+        Route::post('/api/reservations/{reservation}/status', [ReservationController::class, 'updateStatus']);
+    });
+
+    // -------------------------------------------------------------
+    // 📖 D. RECIPE BUILDER & PRODUCT KIOSK STEPS
+    // -------------------------------------------------------------
+    Route::prefix('admin')->group(function () {
+        // Recipes & Food Costing
+        Route::get('/recipes', [RecipeController::class, 'index'])->name('admin.recipes.index');
+        Route::get('/recipes/{product}', [RecipeController::class, 'show'])->name('admin.recipes.show');
+        Route::post('/recipes/{product}/ingredients', [RecipeController::class, 'store'])->name('admin.recipes.store');
+        Route::delete('/recipes/{product}/ingredients/{recipe}', [RecipeController::class, 'destroy'])->name('admin.recipes.destroy');
+
+        // Product Kiosk Steps Manager
+        Route::get('/product-steps', [ProductStepController::class, 'index'])->name('admin.product_steps.index');
+        Route::get('/product-steps/{product}', [ProductStepController::class, 'show'])->name('admin.product_steps.show');
+        Route::post('/product-steps/{product}', [ProductStepController::class, 'store'])->name('admin.product_steps.store');
+        Route::delete('/product-steps/{product}/{optionGroup}', [ProductStepController::class, 'destroy'])->name('admin.product_steps.destroy');
+    });
+
+    // -------------------------------------------------------------
+    // 📦 E. SUPPLIER PURCHASES & DELIVERIES
+    // -------------------------------------------------------------
+    Route::prefix('admin')->group(function () {
+        Route::get('/purchases', [PurchaseOrderController::class, 'index'])->name('admin.purchases.index');
+        Route::get('/purchases/create', [PurchaseOrderController::class, 'create'])->name('admin.purchases.create');
+        Route::post('/purchases', [PurchaseOrderController::class, 'store'])->name('admin.purchases.store');
+        Route::get('/purchases/{purchase}', [PurchaseOrderController::class, 'show'])->name('admin.purchases.show');
+        Route::post('/purchases/{purchase}/receive', [PurchaseOrderController::class, 'receive'])->name('admin.purchases.receive');
+        Route::post('/purchases/{purchase}/cancel', [PurchaseOrderController::class, 'cancel'])->name('admin.purchases.cancel');
+        Route::delete('/purchases/{purchase}', [PurchaseOrderController::class, 'destroy'])->name('admin.purchases.destroy');
+    });
+
+    // -------------------------------------------------------------
+    // 📈 F. FINANCIAL REPORTS & ANALYTICS
+    // -------------------------------------------------------------
+    Route::prefix('admin')->group(function () {
+        // Executive P&L Financials
+        Route::get('/reports/pnl', [PnlReportController::class, 'index'])->name('admin.reports.pnl');
+
+        // General Reports & PDF Downloads
+        Route::get('/reports', [ReportController::class, 'index'])->name('admin.reports.index');
+        Route::get('/reports/pdf', [ReportController::class, 'downloadPdf'])->name('admin.reports.pdf');
+
+        // AI Menu Engineering Matrix
+        Route::get('/menu-engineering', [MenuEngineeringController::class, 'index'])->name('admin.menu_engineering.index');
+
+        // Z-Closure Actions
+        Route::post('/closures/close', [DailyClosureController::class, 'closeDay'])->name('admin.closures.close');
+    });
+
+    // -------------------------------------------------------------
+    // ⚙️ G. MODULAR SITE & OPERATIONS SETTINGS
+    // -------------------------------------------------------------
+    Route::prefix('admin/settings')->group(function () {
+        // General Store & Operations
+        Route::get('/general', [AdminSettingsController::class, 'general'])->name('admin.settings.general');
+        Route::put('/general', [AdminSettingsController::class, 'updateGeneral'])->name('admin.settings.update_general');
+
+        // Homepage Builder
+        Route::get('/homepage', [AdminSettingsController::class, 'homepage'])->name('admin.settings.homepage');
+        Route::put('/homepage', [AdminSettingsController::class, 'updateHomepage'])->name('admin.settings.update_homepage');
+
+        // Web Theme & Branding
+        Route::get('/theme', [AdminSettingsController::class, 'theme'])->name('admin.settings.theme');
+        Route::put('/theme', [AdminSettingsController::class, 'updateTheme'])->name('admin.settings.update_theme');
+    });
 });

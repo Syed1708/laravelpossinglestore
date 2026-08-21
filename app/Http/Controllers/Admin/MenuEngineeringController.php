@@ -4,70 +4,98 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Product;
-use Illuminate\Support\Facades\DB;
+use App\Models\OrderItem;
+use App\Models\StoreSetting;
+use Illuminate\Http\Request;
+use Carbon\Carbon;
 
 class MenuEngineeringController extends Controller
 {
-    /**
-     * Analyze and display product profitability, food costs, and gross margins.
-     */
-    public function index()
+    public function index(Request $request)
     {
-        $products = Product::with('category')->get();
-        $user = auth()->user();
-        $isAdmin = $user->hasRole('superadmin') || $user->hasRole('admin');
+        $settings = StoreSetting::getSettings();
+        $currencySymbol = $settings->currency === 'GBP' ? '£' : '€';
 
-        $analyzedProducts = [];
+        // 1. Calculate Menu Engineering Matrix for last 30 days
+        $startDate = Carbon::now('Europe/Paris')->subDays(30)->startOfDay();
+        $endDate   = Carbon::now('Europe/Paris')->endOfDay();
+
+        $products = Product::with(['recipes.ingredient', 'category'])->where('is_active', true)->get();
+
+        $matrix = [];
+        $totalVolumeSold = 0;
+        $totalProfitGenerated = 0;
 
         foreach ($products as $product) {
-            $totalFoodCost = 0;
-            
-            // Fetch all recipe components for this product
-            $recipeItems = DB::table('recipes')
-                ->where('product_id', $product->id)
-                ->get();
+            // Volume Sold
+            $quantitySold = OrderItem::where('product_id', $product->id)
+                ->whereBetween('created_at', [$startDate, $endDate])
+                ->whereHas('order', fn($q) => $q->whereNotIn('status', ['cancelled', 'refunded']))
+                ->sum('quantity');
 
-            foreach ($recipeItems as $item) {
-                // 🚀 DYNAMIC COST LOOKUP:
-                // Find the unit price paid in the most recent RECEIVED delivery from suppliers
-                $latestPrice = DB::table('purchase_order_items')
-                    ->join('purchase_orders', 'purchase_order_items.purchase_order_id', '=', 'purchase_orders.id')
-                    ->where('purchase_order_items.ingredient_id', $item->ingredient_id)
-                    ->where('purchase_orders.status', 'received')
-                    ->latest('purchase_orders.received_at')
-                    ->value('purchase_order_items.unit_price');
+            // Recipe Cost (COGS)
+            $recipeCost = $product->recipes->sum(function ($r) {
+                return $r->quantity * ($r->ingredient->cost_per_unit ?? 0);
+            });
 
-                // Fallback to a default estimated cost of 1.00 € if no supplier invoices have been received yet
-                if (is_null($latestPrice)) {
-                    $latestPrice = 1.00; 
-                }
+            $sellingPriceHt = $product->price / (1 + (($product->vat_rate ?? 10) / 100));
+            $unitMargin = $sellingPriceHt - $recipeCost;
+            $totalMargin = $unitMargin * $quantitySold;
 
-                $itemCost = $item->quantity * $latestPrice;
-                $totalFoodCost += $itemCost;
-            }
+            $totalVolumeSold += $quantitySold;
+            $totalProfitGenerated += $totalMargin;
 
-            // French Accounting Math: Convert displayed Price (TTC) to Net Revenue (HT)
-            $priceTtc = $product->price;
-            $priceHt = $priceTtc / (1 + ($product->vat_rate / 100));
-            
-            // Calculate Gross Margin (Marge Brute = Revenue HT - Food Cost)
-            $grossMargin = $priceHt - $totalFoodCost;
-            $marginPercentage = $priceHt > 0 ? ($grossMargin / $priceHt) * 100 : 0;
-
-            $analyzedProducts[] = [
-                'name' => $product->name,
-                'category' => $product->category->name ?? 'N/A',
-                'price_ttc' => $priceTtc,
-                'price_ht' => $priceHt,
-                'food_cost' => $totalFoodCost,
-                'margin_euros' => $grossMargin,
-                'margin_percentage' => $marginPercentage,
+            $matrix[] = [
+                'id'            => $product->id,
+                'name'          => $product->name,
+                'category'      => $product->category->name ?? 'Uncategorized',
+                'selling_price' => $product->price,
+                'recipe_cost'   => round($recipeCost, 2),
+                'unit_margin'   => round($unitMargin, 2),
+                'quantity_sold' => (int) $quantitySold,
+                'total_margin'  => round($totalMargin, 2),
             ];
         }
 
-        return view('admin.menu_engineering.index', [
-            'products' => $analyzedProducts,
-            'isAdmin' => $isAdmin
-        ]);
+        // Calculate Average Thresholds for Quadrant Placement
+        $avgVolume = count($matrix) > 0 ? ($totalVolumeSold / count($matrix)) : 0;
+        $avgMargin = count($matrix) > 0 ? ($totalProfitGenerated / max(1, $totalVolumeSold)) : 0;
+
+        // Categorize into Quadrants
+        $stars = [];
+        $plowhorses = [];
+        $puzzles = [];
+        $dogs = [];
+
+        foreach ($matrix as &$item) {
+            $isHighVolume = $item['quantity_sold'] >= $avgVolume;
+            $isHighMargin = $item['unit_margin'] >= $avgMargin;
+
+            if ($isHighVolume && $isHighMargin) {
+                $item['quadrant'] = 'star';
+                $stars[] = $item;
+            } elseif ($isHighVolume && !$isHighMargin) {
+                $item['quadrant'] = 'plowhorse';
+                $plowhorses[] = $item;
+            } elseif (!$isHighVolume && $isHighMargin) {
+                $item['quadrant'] = 'puzzle';
+                $puzzles[] = $item;
+            } else {
+                $item['quadrant'] = 'dog';
+                $dogs[] = $item;
+            }
+        }
+
+        return view('admin.menu_engineering.index', compact(
+            'currencySymbol',
+            'stars',
+            'plowhorses',
+            'puzzles',
+            'dogs',
+            'avgVolume',
+            'avgMargin',
+            'totalVolumeSold',
+            'totalProfitGenerated'
+        ));
     }
 }

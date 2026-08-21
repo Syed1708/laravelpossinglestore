@@ -97,7 +97,7 @@ class Product extends Model
         return $this->belongsTo(Category::class);
     }
 
-       /**
+    /**
      * 🚀 RECIPES RELATIONSHIP (Fixes "Call to undefined relationship [recipes]")
      */
     public function recipes(): HasMany
@@ -111,9 +111,19 @@ class Product extends Model
     public function recipeIngredients(): BelongsToMany
     {
         return $this->belongsToMany(Ingredient::class, 'recipes')
-                    ->withPivot('quantity')
-                    ->withTimestamps();
+            ->withPivot('quantity')
+            ->withTimestamps();
     }
 
-
+    /**
+     * 🚀 Dynamic Step-by-Step Customization Option Groups for Kiosk & Web
+     * Returns option groups sorted in exact step sequence (Step 1, 2, 3...)
+     */
+    public function optionGroups(): BelongsToMany
+    {
+        return $this->belongsToMany(OptionGroup::class, 'product_option_group')
+            ->withPivot('step_order', 'free_choice_limit_override')
+            ->orderBy('product_option_group.step_order', 'asc')
+            ->withTimestamps();
+    }
 }
