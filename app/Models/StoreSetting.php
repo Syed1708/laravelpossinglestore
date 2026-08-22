@@ -10,8 +10,6 @@ class StoreSetting extends Model
         'country',
         'currency',
         'default_payroll_frequency',
-        'logo_path',
-        'favicon_path',
         'is_store_open',
         'online_orders_enabled',
         'reservations_enabled',
@@ -20,10 +18,27 @@ class StoreSetting extends Model
         'shift2_start',
         'shift2_end',
         'closed_message',
+        'logo_path',
+        'favicon_path',
         'hero_title',
         'hero_subtitle',
         'promo_banner_text',
         'promo_active',
+        'show_how_it_works',
+        'show_featured',
+        'show_why_choose_us',
+        'show_newsletter',
+        'show_faq',
+        'show_contact',
+        'how_it_works_title',
+        'how_it_works_subtitle',
+        'how_it_works_steps',
+        'why_choose_us_title',
+        'why_choose_us_subtitle',
+        'why_choose_us_items',
+        'faq_title',
+        'faq_subtitle',
+        'faq_items',
         'about_title',
         'about_text',
         'contact_email',
@@ -43,45 +58,23 @@ class StoreSetting extends Model
         'online_orders_enabled' => 'boolean',
         'reservations_enabled'  => 'boolean',
         'promo_active'          => 'boolean',
-        'reviews'               => 'array', // Automatically decodes JSON reviews
+        'show_how_it_works'     => 'boolean',
+        'show_featured'         => 'boolean',
+        'show_why_choose_us'    => 'boolean',
+        'show_newsletter'       => 'boolean',
+        'show_faq'              => 'boolean',
+        'show_contact'          => 'boolean',
+        'how_it_works_steps'    => 'array',
+        'why_choose_us_items'   => 'array',
+        'faq_items'             => 'array',
+        'reviews'               => 'array',
     ];
 
     /**
-     * 🚀 SINGLETON SETTING: Always fetches row ID #1 (edited in Tyro Dashboard)
+     * 🚀 Singleton Helper: Always returns row #1
      */
     public static function getSettings(): self
     {
-        $setting = static::find(1) ?? static::first();
-
-        if (!$setting) {
-            $setting = static::create([
-                'id'                        => 1,
-                'country'                   => 'FR',
-                'currency'                  => 'EUR',
-                'default_payroll_frequency' => 'monthly',
-                'is_store_open'             => true,
-                'online_orders_enabled'     => true,
-                'reservations_enabled'      => true,
-                'shift1_start'              => '10:00',
-                'shift1_end'                => '14:30',
-                'shift2_start'              => '18:30',
-                'shift2_end'                => '22:30',
-                'closed_message'            => 'Restaurant is currently closed for online ordering.',
-                'hero_title'                => 'Burger Palace Bordeaux',
-                'hero_subtitle'             => 'Executive Gourmet Burgers prepared fresh with local ingredients.',
-                'about_title'               => 'Gourmet Passion in Bordeaux',
-                'about_text'                => 'Founded in 2026, Burger Palace brings gourmet artisanal burgers to the heart of Bordeaux.',
-                'contact_email'             => 'contact@burgerpalace.fr',
-                'contact_phone'             => '+33 5 56 00 00 00',
-                'contact_address'           => '12 Rue Sainte-Catherine, 33000 Bordeaux',
-                'theme_preset'              => 'amber',
-                'primary_color'             => '#f59e0b',
-                'secondary_color'           => '#10b981',
-                'font_family'               => 'sans-serif',
-                'border_radius'             => 'rounded-2xl',
-            ]);
-        }
-
-        return $setting;
+        return static::find(1) ?? static::first() ?? static::create(['id' => 1]);
     }
 }

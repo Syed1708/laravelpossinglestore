@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\HeroSlideController;
 use Illuminate\Support\Facades\Route;
 
 // Admin Controllers
@@ -160,4 +161,13 @@ Route::middleware(['web', 'auth'])->group(function () {
         Route::get('/theme', [AdminSettingsController::class, 'theme'])->name('admin.settings.theme');
         Route::put('/theme', [AdminSettingsController::class, 'updateTheme'])->name('admin.settings.update_theme');
     });
+
+    // Sliders Manager Routes
+    Route::prefix('admin/hero-slides')->group(function () {
+    Route::get('/', [HeroSlideController::class, 'index'])->name('admin.hero_slides.index');
+    Route::post('/', [HeroSlideController::class, 'store'])->name('admin.hero_slides.store');
+    Route::post('/{slide}/update', [HeroSlideController::class, 'update'])->name('admin.hero_slides.update');
+    Route::delete('/{slide}', [HeroSlideController::class, 'destroy'])->name('admin.hero_slides.destroy');
+    Route::post('/reorder', [HeroSlideController::class, 'reorder'])->name('admin.hero_slides.reorder');
+});
 });

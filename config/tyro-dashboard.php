@@ -63,7 +63,7 @@ return [
         'logo' => env('TYRO_DASHBOARD_LOGO', null),
         'logo_height' => env('TYRO_DASHBOARD_LOGO_HEIGHT', '32px'),
         'favicon' => env('TYRO_DASHBOARD_FAVICON', null),
-        // 'favicon' => env('TYRO_DASHBOARD_FAVICON', '/favicon.svg'),
+        // 'favicon' => env('TYRO_DASHBOARD_FAVICON', '/favicon.svg?v=2.0'),
         // 'favicon'  => '/favicon.svg', // 🚀 Points to public/favicon.svg
 
 
@@ -758,6 +758,12 @@ return [
             'icon'   => '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.098 19.902a3.75 3.75 0 005.304 0l6.401-6.402M6.75 21A3.75 3.75 0 013 17.25V4.125C3 3.504 3.504 3 4.125 3h5.25c.621 0 1.125.504 1.125 1.125v4.072M6.75 21a3.75 3.75 0 003.75-3.75V8.197M6.75 21h13.125c.621 0 1.125-.504 1.125-1.125v-5.25c0-.621-.504-1.125-1.125-1.125h-4.072" /></svg>',
         ],
 
+        'hero_slides' => [
+            'group'  => 'Settings & Customization',
+            'title'  => '🎠 Hero Carousel Sliders',
+            'route'  => 'admin.hero_slides.index', // 🚀 Points to custom Drag & Drop + Modal View!
+            'icon'   => '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" /></svg>',
+        ],
 
         'menu_engineering' => [
             'group' => 'Back-Office & Finance',

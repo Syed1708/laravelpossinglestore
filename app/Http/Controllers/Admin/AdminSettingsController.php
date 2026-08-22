@@ -3,12 +3,16 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\HeroSlide;
 use App\Models\StoreSetting;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class AdminSettingsController extends Controller
 {
-    // 1. General & Operations Settings Page
+    /**
+     * 1. General & Operations Settings Page
+     */
     public function general()
     {
         $settings = StoreSetting::getSettings();
@@ -40,11 +44,16 @@ class AdminSettingsController extends Controller
             ->with('success', 'General store and operations settings updated successfully!');
     }
 
-    // 2. Homepage Builder Settings Page
+    /**
+     * 2. Homepage Builder Settings Page
+     */
     public function homepage()
     {
         $settings = StoreSetting::getSettings();
-        return view('admin.settings.homepage', compact('settings'));
+        // 🚀 Fetch ALL dynamic hero slides ordered by sort_order
+        $heroSlides = HeroSlide::orderBy('sort_order', 'asc')->get();
+
+        return view('admin.settings.homepage', compact('settings', 'heroSlides'));
     }
 
     public function updateHomepage(Request $request)
@@ -52,38 +61,109 @@ class AdminSettingsController extends Controller
         $settings = StoreSetting::getSettings();
 
         $validated = $request->validate([
-            'hero_title'          => 'required|string|max:255',
-            'hero_subtitle'       => 'nullable|string|max:1000',
-            'promo_banner_text'   => 'nullable|string|max:255',
-            'about_title'         => 'nullable|string|max:255',
-            'about_text'          => 'nullable|string|max:2000',
-            'contact_email'       => 'nullable|email|max:255',
-            'contact_phone'       => 'nullable|string|max:50',
-            'contact_address'     => 'nullable|string|max:255',
-            'google_maps_iframe'  => 'nullable|string',
-            'logo'                => 'nullable|image|max:2048',
-            'favicon'             => 'nullable|image|max:1024',
+            'hero_title'             => 'required|string|max:255',
+            'hero_subtitle'          => 'nullable|string|max:1000',
+            'promo_banner_text'      => 'nullable|string|max:255',
+            'about_title'            => 'nullable|string|max:255',
+            'about_text'             => 'nullable|string|max:2000',
+            'contact_email'          => 'nullable|email|max:255',
+            'contact_phone'          => 'nullable|string|max:50',
+            'contact_address'        => 'nullable|string|max:255',
+            'google_maps_iframe'     => 'nullable|string',
+            'how_it_works_title'     => 'nullable|string|max:255',
+            'how_it_works_subtitle'  => 'nullable|string|max:255',
+            'why_choose_us_title'    => 'nullable|string|max:255',
+            'why_choose_us_subtitle' => 'nullable|string|max:255',
+            'faq_title'              => 'nullable|string|max:255',
+            'faq_subtitle'           => 'nullable|string|max:255',
+            'logo'                   => 'nullable|image|max:2048',
+            'favicon'                => 'nullable|image|max:1024',
         ]);
 
-        $validated['promo_active'] = $request->has('promo_active');
+        // Section Visibility Toggles
+        $validated['promo_active']        = $request->has('promo_active');
+        $validated['show_how_it_works']  = $request->has('show_how_it_works');
+        $validated['show_featured']      = $request->has('show_featured');
+        $validated['show_about']         = $request->has('show_about');
+        $validated['show_why_choose_us'] = $request->has('show_why_choose_us');
+        $validated['show_newsletter']    = $request->has('show_newsletter');
+        $validated['show_faq']           = $request->has('show_faq');
+        $validated['show_contact']       = $request->has('show_contact');
 
-        // Handle Logo Upload
+        // Process How It Works Steps
+        if ($request->has('hw_step_title')) {
+            $steps = [];
+            foreach ($request->input('hw_step_title', []) as $idx => $title) {
+                if (!empty($title)) {
+                    $steps[] = [
+                        'step'        => $idx + 1,
+                        'title'       => $title,
+                        'description' => $request->input("hw_step_desc.{$idx}", ''),
+                    ];
+                }
+            }
+            $validated['how_it_works_steps'] = $steps;
+        }
+
+        // Process Why Choose Us Items
+        if ($request->has('wcu_item_title')) {
+            $items = [];
+            foreach ($request->input('wcu_item_title', []) as $idx => $title) {
+                if (!empty($title)) {
+                    $items[] = [
+                        'icon'        => $request->input("wcu_item_icon.{$idx}", '✨'),
+                        'title'       => $title,
+                        'description' => $request->input("wcu_item_desc.{$idx}", ''),
+                    ];
+                }
+            }
+            $validated['why_choose_us_items'] = $items;
+        }
+
+        // Process FAQ Q&A Items
+        if ($request->has('faq_question')) {
+            $faqs = [];
+            foreach ($request->input('faq_question', []) as $idx => $q) {
+                if (!empty($q)) {
+                    $faqs[] = [
+                        'question' => $q,
+                        'answer'   => $request->input("faq_answer.{$idx}", ''),
+                    ];
+                }
+            }
+            $validated['faq_items'] = $faqs;
+        }
+
+        // 🚀 1. DELETE OLD LOGO IF NEW ONE IS UPLOADED
         if ($request->hasFile('logo')) {
+            if (!empty($settings->logo_path) && Storage::disk('public')->exists($settings->logo_path)) {
+                Storage::disk('public')->delete($settings->logo_path); // Delete old logo file
+            }
             $validated['logo_path'] = $request->file('logo')->store('branding', 'public');
         }
 
-        // Handle Favicon Upload
+        // 🚀 2. DELETE OLD FAVICON IF NEW ONE IS UPLOADED
         if ($request->hasFile('favicon')) {
+            if (!empty($settings->favicon_path) && Storage::disk('public')->exists($settings->favicon_path)) {
+                Storage::disk('public')->delete($settings->favicon_path); // Delete old favicon file
+            }
             $validated['favicon_path'] = $request->file('favicon')->store('branding', 'public');
+        }
+
+        // Fallback for hero_title
+        if (empty($validated['hero_title'])) {
+            $validated['hero_title'] = $settings->hero_title ?? 'Burger Palace Bordeaux';
         }
 
         $settings->update($validated);
 
         return redirect()->route('admin.settings.homepage')
-            ->with('success', 'Homepage content and branding updated successfully!');
+            ->with('success', 'Homepage content, section toggles, and FAQs updated successfully!');
     }
 
-    // 3. Theme & UI Customization Settings Page
+    /**
+     * 3. Theme & UI Customization Settings Page
+     */
     public function theme()
     {
         $settings = StoreSetting::getSettings();

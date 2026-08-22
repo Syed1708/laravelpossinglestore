@@ -3,8 +3,6 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Models\Product;
-use App\Models\StoreSetting;
-use App\Helpers\StoreHoursHelper;
 
 // Controllers
 use App\Http\Controllers\Api\OrderSyncController;
@@ -13,6 +11,7 @@ use App\Http\Controllers\ReservationController;
 use App\Http\Controllers\Admin\OnlineOrderController;
 use App\Http\Controllers\Api\v1\client\ClientAuthController;
 use App\Http\Controllers\Api\v1\client\CouponApiController;
+use App\Http\Controllers\Api\v1\client\SiteSettingsApiController;
 use App\Http\Controllers\Api\v1\client\StripeWebController;
 use App\Http\Controllers\Api\v1\Pos\DayClosureApiController;
 use App\Http\Controllers\Api\v1\Pos\PosSalesApiController;
@@ -24,30 +23,37 @@ use App\Http\Controllers\Api\v1\staff\AuthController;
 |--------------------------------------------------------------------------
 */
 
+
 // Real-Time Store Hours & Master Status Check
-Route::get('/store-status', function () {
-    $settings = StoreSetting::getSettings();
+Route::get('/store-status', [SiteSettingsApiController::class, 'storeStatus']);
 
-    return response()->json([
-        'is_open'               => StoreHoursHelper::isOpen(),
-        'is_store_open'         => (bool) $settings->is_store_open,
-        'online_orders_enabled' => StoreHoursHelper::canAcceptOnlineOrders(),
-        'reservations_enabled'  => StoreHoursHelper::canAcceptReservations(),
-        'schedule'              => StoreHoursHelper::getScheduleText(),
-        'closed_message'        => StoreHoursHelper::getClosedMessage(),
-    ]);
-});
+// Full Site Branding, Hero Sliders & CMS Settings
+Route::get('/site-settings', [SiteSettingsApiController::class, 'siteSettings']);
 
-// Full Site Branding & CMS Settings (Logo, Colors, Hero Banners)
-Route::get('/site-settings', function () {
-    $settings = StoreSetting::getSettings();
+// Real-Time Store Hours & Master Status Check
+// Route::get('/store-status', function () {
+//     $settings = StoreSetting::getSettings();
 
-    return response()->json([
-        ...$settings->toArray(),
-        'logo_url'    => $settings->logo_path ? asset('storage/' . $settings->logo_path) : null,
-        'favicon_url' => $settings->favicon_path ? asset('storage/' . $settings->favicon_path) : null,
-    ]);
-});
+//     return response()->json([
+//         'is_open'               => StoreHoursHelper::isOpen(),
+//         'is_store_open'         => (bool) $settings->is_store_open,
+//         'online_orders_enabled' => StoreHoursHelper::canAcceptOnlineOrders(),
+//         'reservations_enabled'  => StoreHoursHelper::canAcceptReservations(),
+//         'schedule'              => StoreHoursHelper::getScheduleText(),
+//         'closed_message'        => StoreHoursHelper::getClosedMessage(),
+//     ]);
+// });
+
+// // Full Site Branding & CMS Settings (Logo, Colors, Hero Banners)
+// Route::get('/site-settings', function () {
+//     $settings = StoreSetting::getSettings();
+
+//     return response()->json([
+//         ...$settings->toArray(),
+//         'logo_url'    => $settings->logo_path ? asset('storage/' . $settings->logo_path) : null,
+//         'favicon_url' => $settings->favicon_path ? asset('storage/' . $settings->favicon_path) : null,
+//     ]);
+// });
 
 // 🚀 PUBLIC MENU CATALOG (Eager loads Kiosk Option Groups & Choices)
 Route::get('/menu', function () {
