@@ -4,32 +4,39 @@ namespace App\Http\Controllers\Api\v1\client;
 
 use App\Http\Controllers\Controller;
 use App\Models\Order;
-use App\Models\OrderItem;
 use App\Models\Payment;
 use App\Models\Product;
-use App\Models\Ingredient;
-use App\Models\Recipe;
 use App\Models\Coupon;
 use App\Models\Client;
+use App\Services\Fiscal\FiscalLedgerService;
+use App\Services\Inventory\StockService;
+use App\Services\Orders\SequenceService;
 use App\Services\LoyaltyService;
 use App\Events\KdsOrderUpdated;
 use App\Helpers\StoreHoursHelper;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Stripe\Stripe;
 use Stripe\Checkout\Session;
 use Stripe\Webhook;
-use Carbon\Carbon;
+use Throwable;
 
 class StripeWebController extends Controller
 {
+    public function __construct(
+        protected StockService $stockService,
+        protected FiscalLedgerService $fiscalService,
+        protected SequenceService $sequenceService
+    ) {}
+
     /**
      * Create a secure Stripe Checkout Session with Promo Codes & Loyalty Points support.
      */
-    public function createCheckoutSession(Request $request)
+    public function createCheckoutSession(Request $request): JsonResponse
     {
-        // 🚀 1. ONLINE ORDERING GUARD: Check if store is open and online orders are enabled
         if (!StoreHoursHelper::canAcceptOnlineOrders()) {
             return response()->json([
                 'error'    => StoreHoursHelper::getClosedMessage(),
@@ -47,29 +54,26 @@ class StripeWebController extends Controller
 
         try {
             $secretKey = config('services.stripe.secret') ?? env('STRIPE_SECRET');
-
             if (!$secretKey) {
-                return response()->json([
-                    'error' => 'STRIPE_SECRET is missing in Laravel .env or config/services.php!'
-                ], 500);
+                return response()->json(['error' => 'Stripe secret key missing.'], 500);
             }
 
             Stripe::setApiKey($secretKey);
 
-            $clientId = auth('sanctum')->id() ?? $request->user('sanctum')?->id ?? $request->input('client_id') ?? null;
-            $couponCode = $request->input('coupon_code');
+            $clientId       = auth('sanctum')->id() ?? $request->user('sanctum')?->id ?? $request->input('client_id') ?? null;
+            $couponCode     = $request->input('coupon_code');
             $pointsToRedeem = (int) $request->input('points_to_redeem', 0);
 
-            // 2. Calculate Cart Subtotal
+            // 1. Calculate Cart Subtotal
             $cartSubtotal = 0;
             foreach ($request->cart as $itemData) {
-                $product = Product::findOrFail($itemData['id']);
-                $basePrice = (float) ($product->price ?? $product->unit_price ?? 0);
-                $extraPrice = (float) ($itemData['extraPrice'] ?? 0);
+                $product       = Product::findOrFail($itemData['id']);
+                $basePrice     = (float) ($product->price ?? $product->unit_price ?? 0);
+                $extraPrice    = (float) ($itemData['extraPrice'] ?? 0);
                 $cartSubtotal += ($basePrice + $extraPrice) * (int) $itemData['quantity'];
             }
 
-            // 3. Calculate Promo Code Discount
+            // 2. Promo Code & Loyalty Points Discount Calculation
             $discountAmount = 0.00;
             if ($couponCode) {
                 $coupon = Coupon::where('code', strtoupper(trim($couponCode)))->where('is_active', true)->first();
@@ -78,33 +82,27 @@ class StripeWebController extends Controller
                 }
             }
 
-            // 4. Calculate Loyalty Points Discount
             if ($pointsToRedeem > 0 && $clientId) {
                 $client = Client::find($clientId);
                 if ($client && $client->loyalty_points >= $pointsToRedeem) {
-                    $loyaltyDiscount = round($pointsToRedeem * LoyaltyService::POINT_REDEMPTION_VALUE, 2);
-                    $discountAmount += $loyaltyDiscount;
+                    $discountAmount += round($pointsToRedeem * LoyaltyService::POINT_REDEMPTION_VALUE, 2);
                 }
             }
 
-            // Cap discount to cart subtotal
             $discountAmount = min($discountAmount, $cartSubtotal);
-
-            // Ratio to apply discount proportionally across line items for Stripe Checkout
-            $discountRatio = ($cartSubtotal > 0) ? (($cartSubtotal - $discountAmount) / $cartSubtotal) : 1;
+            $discountRatio  = ($cartSubtotal > 0) ? (($cartSubtotal - $discountAmount) / $cartSubtotal) : 1;
 
             $lineItems = [];
             foreach ($request->cart as $itemData) {
-                $product = Product::findOrFail($itemData['id']);
-                $basePrice = (float) ($product->price ?? $product->unit_price ?? 0);
-                $extraPrice = (float) ($itemData['extraPrice'] ?? 0);
-                $finalUnitPrice = ($basePrice + $extraPrice) * $discountRatio;
-
-                $notesText = !empty($itemData['notes']) ? ' (' . implode(', ', $itemData['notes']) . ')' : '';
+                $product         = Product::findOrFail($itemData['id']);
+                $basePrice       = (float) ($product->price ?? $product->unit_price ?? 0);
+                $extraPrice      = (float) ($itemData['extraPrice'] ?? 0);
+                $finalUnitPrice  = ($basePrice + $extraPrice) * $discountRatio;
+                $notesText       = !empty($itemData['notes']) ? ' (' . implode(', ', $itemData['notes']) . ')' : '';
 
                 $lineItems[] = [
                     'price_data' => [
-                        'currency' => 'eur',
+                        'currency'     => 'eur',
                         'product_data' => [
                             'name' => $product->name . $notesText,
                         ],
@@ -116,7 +114,6 @@ class StripeWebController extends Controller
 
             $frontendUrl = $request->header('Origin') ?? env('FRONTEND_URL', 'https://next-click-and-cloonect-pos-web.vercel.app');
 
-            // 🚀 STRIPE METADATA FIX: Cast all values explicitly as strings
             $session = Session::create([
                 'payment_method_types' => ['card'],
                 'line_items'           => $lineItems,
@@ -133,44 +130,38 @@ class StripeWebController extends Controller
             ]);
 
             return response()->json(['url' => $session->url], 200);
-        } catch (\Exception $e) {
+        } catch (Throwable $e) {
             Log::error('Stripe Session creation failed: ' . $e->getMessage());
             return response()->json([
-                'error' => 'Failed to create payment session.',
+                'error'   => 'Failed to create payment session.',
                 'message' => $e->getMessage()
             ], 500);
         }
     }
 
     /**
-     * 🚀 FAIL-SAFE VERIFICATION ENDPOINT
+     * Fail-safe verification endpoint
      */
-    public function verifySession(Request $request)
+    public function verifySession(Request $request): JsonResponse
     {
         $sessionId = $request->query('session_id');
         if (!$sessionId) {
             return response()->json(['error' => 'No session_id provided'], 400);
         }
 
-        $stripeSecret = config('services.stripe.secret') ?? env('STRIPE_SECRET');
-        Stripe::setApiKey($stripeSecret);
+        Stripe::setApiKey(config('services.stripe.secret') ?? env('STRIPE_SECRET'));
 
         try {
             $session = Session::retrieve($sessionId);
 
             if ($session->payment_status === 'paid') {
-                $cartJson = null;
-                if (isset($session->metadata->cart)) {
-                    $cartJson = $session->metadata->cart;
-                }
-                
+                $cartJson = $session->metadata->cart ?? null;
                 $clientId = $session->metadata->client_id ?? null;
 
                 if (!$cartJson) {
                     return response()->json(['error' => 'Cart metadata missing'], 400);
                 }
 
-                // Create Order (Deduplicated)
                 $order = $this->processOrderCreation($session, json_decode($cartJson, true), $clientId);
 
                 return response()->json([
@@ -179,26 +170,23 @@ class StripeWebController extends Controller
                 ], 200);
             }
 
-            return response()->json(['success' => false, 'message' => 'Payment not paid'], 400);
-        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Payment not completed'], 400);
+        } catch (Throwable $e) {
             Log::error('Stripe Session Verification Error: ' . $e->getMessage());
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
 
     /**
-     * Securely listen to Stripe's cloud server webhook.
+     * Webhook Handler
      */
-    public function handleWebhook(Request $request)
+    public function handleWebhook(Request $request): JsonResponse
     {
-        $stripeSecret = config('services.stripe.secret') ?? env('STRIPE_SECRET');
-        Stripe::setApiKey($stripeSecret);
+        Stripe::setApiKey(config('services.stripe.secret') ?? env('STRIPE_SECRET'));
 
-        $payload = $request->getContent();
-        $sigHeader = $request->header('Stripe-Signature') ?? $request->header('HTTP_STRIPE_SIGNATURE');
+        $payload        = $request->getContent();
+        $sigHeader      = $request->header('Stripe-Signature') ?? $request->header('HTTP_STRIPE_SIGNATURE');
         $endpointSecret = config('services.stripe.webhook.secret') ?? env('STRIPE_WEBHOOK_SECRET');
-
-        $event = null;
 
         try {
             if ($endpointSecret && $sigHeader) {
@@ -206,23 +194,15 @@ class StripeWebController extends Controller
             } else {
                 $event = json_decode($payload);
             }
-        } catch (\UnexpectedValueException $e) {
-            Log::error('Stripe Webhook Invalid Payload: ' . $e->getMessage());
-            return response()->json(['error' => 'Invalid payload.'], 400);
-        } catch (\Stripe\Exception\SignatureVerificationException $e) {
-            Log::error('Stripe Webhook Signature Verification Failed: ' . $e->getMessage());
-            return response()->json(['error' => 'Invalid signature.'], 400);
+        } catch (Throwable $e) {
+            Log::error('Stripe Webhook Signature/Payload Error: ' . $e->getMessage());
+            return response()->json(['error' => $e->getMessage()], 400);
         }
 
         $eventType = is_object($event) && isset($event->type) ? $event->type : null;
 
         if ($eventType === 'checkout.session.completed') {
-            $session = is_object($event->data) ? $event->data->object : null;
-
-            if (!$session) {
-                return response()->json(['error' => 'Session object missing'], 400);
-            }
-
+            $session  = is_object($event->data) ? $event->data->object : null;
             $cartJson = $session->metadata->cart ?? null;
             $clientId = $session->metadata->client_id ?? null;
 
@@ -236,11 +216,11 @@ class StripeWebController extends Controller
     }
 
     /**
-     * 🚀 SHARED ORDER CREATION ENGINE (With Extras, Coupons, & Loyalty Points)
+     * Shared Atomic Order Creation Engine (Dynamic TVA 5.5% / 10% / 20% & Single Stock Deductions)
      */
-    private function processOrderCreation($session, array $cart, $clientId = null)
+    private function processOrderCreation($session, array $cart, $clientId = null): Order
     {
-        $paymentIntent = is_object($session) ? ($session->payment_intent ?? null) : ($session['payment_intent'] ?? null);
+        $paymentIntent   = is_object($session) ? ($session->payment_intent ?? null) : ($session['payment_intent'] ?? null);
         $paymentIntentId = is_object($paymentIntent) ? ($paymentIntent->id ?? null) : $paymentIntent;
 
         if (!empty($paymentIntentId)) {
@@ -250,82 +230,101 @@ class StripeWebController extends Controller
             }
         }
 
-        // 🚀 METADATA EXTRACTION FIX: Extract array safely using toArray()
         $metadata = [];
         if (isset($session->metadata)) {
-            if (is_object($session->metadata) && method_exists($session->metadata, 'toArray')) {
-                $metadata = $session->metadata->toArray();
-            } elseif (is_array($session->metadata)) {
-                $metadata = $session->metadata;
-            }
+            $metadata = is_object($session->metadata) && method_exists($session->metadata, 'toArray')
+                ? $session->metadata->toArray()
+                : (array) $session->metadata;
         }
 
         $couponCode     = !empty($metadata['coupon_code']) ? strtoupper(trim($metadata['coupon_code'])) : null;
         $discountAmount = isset($metadata['discount_amount']) ? (float) $metadata['discount_amount'] : 0.00;
         $pointsToRedeem = isset($metadata['points_to_redeem']) ? (int) $metadata['points_to_redeem'] : 0;
 
-        $clientName = 'Web Customer';
+        $clientName  = 'Web Customer';
         $clientPhone = null;
 
         if ($clientId) {
             $client = Client::find($clientId);
             if ($client) {
-                $clientName = $client->name;
+                $clientName  = $client->name;
                 $clientPhone = $client->phone ?? null;
             }
         }
 
         DB::beginTransaction();
         try {
-            $subtotalExclVat = 0;
-            $vatAmount = 0;
-            $totalInclVat = 0;
-            $orderItems = [];
+            $grossSubtotal = 0;
+            $lineItemData  = [];
 
             foreach ($cart as $itemData) {
-                $product = Product::findOrFail($itemData['id']);
-                $quantity = (int) $itemData['quantity'];
-                $basePrice = (float) ($product->price ?? $product->unit_price ?? 0);
-                $extraPrice = (float) ($itemData['extraPrice'] ?? 0);
+                $product             = Product::findOrFail($itemData['id']);
+                $quantity            = (int) $itemData['quantity'];
+                $basePrice           = (float) ($product->price ?? $product->unit_price ?? 0);
+                $extraPrice          = (float) ($itemData['extraPrice'] ?? 0);
                 $unitPriceWithExtras = $basePrice + $extraPrice;
-                $vatRate = (float) ($product->vat_rate ?? 10.0);
+                $vatRate             = (float) ($product->vat_rate ?? 10.0);
+                $itemTotalTtc        = $unitPriceWithExtras * $quantity;
 
-                $itemTotalTtc = $unitPriceWithExtras * $quantity;
-                $itemSubtotalHt = $itemTotalTtc / (1 + ($vatRate / 100));
-                $itemVat = $itemTotalTtc - $itemSubtotalHt;
-
-                $subtotalExclVat += $itemSubtotalHt;
-                $vatAmount += $itemVat;
-                $totalInclVat += $itemTotalTtc;
-
-                $orderItems[] = [
+                $grossSubtotal += $itemTotalTtc;
+                $lineItemData[] = [
                     'product_id'   => $product->id,
                     'product_name' => $product->name,
                     'notes'        => $itemData['notes'] ?? null,
                     'quantity'     => $quantity,
                     'unit_price'   => $unitPriceWithExtras,
                     'vat_rate'     => $vatRate,
-                    'subtotal'     => $itemTotalTtc,
+                    'raw_total'    => $itemTotalTtc,
                 ];
             }
 
-            // Apply Discount to Final Grand Totals
-            $finalTotalTtc = max(0, $totalInclVat - $discountAmount);
-            $finalSubtotalHt = $finalTotalTtc / (1 + (10.0 / 100));
-            $finalVatAmount = $finalTotalTtc - $finalSubtotalHt;
+            // 🚀 DYNAMIC TVA SPLIT: Proportionally apply discount across items to maintain exact per-product VAT rates
+            $discountRatio = ($grossSubtotal > 0) ? max(0, ($grossSubtotal - $discountAmount) / $grossSubtotal) : 1;
 
-            $lastSeqOrder = Order::orderBy('sequence_number', 'desc')->lockForUpdate()->first();
-            $sequenceNumber = $lastSeqOrder ? ($lastSeqOrder->sequence_number + 1) : 1;
-            $completedAt = Carbon::now();
+            $subtotalExclVat = 0;
+            $vatAmount       = 0;
+            $totalInclVat    = 0;
+            $finalItems      = [];
+            $stockItems      = [];
 
-            $lastHashOrder = Order::whereNotNull('hash')->where('hash', '!=', '')->orderBy('sequence_number', 'desc')->first();
-            $previousHash = ($lastHashOrder && !empty($lastHashOrder->hash)) ? $lastHashOrder->hash : '0000000000000000000000000000000000000000000000000000000000000000';
+            foreach ($lineItemData as $line) {
+                $discountedTotalTtc = round($line['raw_total'] * $discountRatio, 2);
+                $discountedUnitTtc  = $line['quantity'] > 0 ? round($discountedTotalTtc / $line['quantity'], 2) : 0;
+                $itemSubtotalHt     = $discountedTotalTtc / (1 + ($line['vat_rate'] / 100));
+                $itemVat            = $discountedTotalTtc - $itemSubtotalHt;
 
-            $dataToHash = "{$sequenceNumber}|" . number_format($finalSubtotalHt, 2, '.', '') . "|" . number_format($finalVatAmount, 2, '.', '') . "|" . number_format($finalTotalTtc, 2, '.', '') . "|{$completedAt->setTimezone('UTC')->format('Y-m-d\TH:i:s\Z')}|{$previousHash}";
-            $currentHash = hash('sha256', $dataToHash);
+                $subtotalExclVat += $itemSubtotalHt;
+                $vatAmount       += $itemVat;
+                $totalInclVat    += $discountedTotalTtc;
 
+                $finalItems[] = [
+                    'product_id'   => $line['product_id'],
+                    'product_name' => $line['product_name'],
+                    'notes'        => $line['notes'],
+                    'quantity'     => $line['quantity'],
+                    'unit_price'   => $discountedUnitTtc,
+                    'vat_rate'     => $line['vat_rate'],
+                    'subtotal'     => $discountedTotalTtc,
+                ];
+
+                $stockItems[] = [
+                    'product_id' => $line['product_id'],
+                    'quantity'   => $line['quantity'],
+                ];
+            }
+
+            // 🚀 1. ATOMIC SEQUENCE & NF525 HASH GENERATION
+            $sequenceNumber = $this->sequenceService->getNextSequenceNumber();
+            $signature      = $this->fiscalService->generateSignature(
+                $sequenceNumber,
+                $subtotalExclVat,
+                $vatAmount,
+                $totalInclVat
+            );
+
+            // 🚀 2. CREATE ORDER RECORD
             $order = Order::create([
-                'uuid'               => (string) \Illuminate\Support\Str::uuid(),
+                'uuid'               => (string) Str::uuid(),
                 'payment_intent_id'  => $paymentIntentId,
                 'client_id'          => $clientId,
                 'customer_name'      => $clientName,
@@ -335,46 +334,33 @@ class StripeWebController extends Controller
                 'coupon_code'        => $couponCode,
                 'discount_amount'    => $discountAmount,
                 'points_redeemed'    => $pointsToRedeem,
-                'subtotal_excl_vat'  => round($finalSubtotalHt, 2),
-                'vat_amount'         => round($finalVatAmount, 2),
-                'total_incl_vat'     => round($finalTotalTtc, 2),
-                'hash'               => $currentHash,
-                'previous_hash'      => $previousHash,
-                'completed_at'       => $completedAt,
+                'subtotal_excl_vat'  => round($subtotalExclVat, 2),
+                'vat_amount'         => round($vatAmount, 2),
+                'total_incl_vat'     => round($totalInclVat, 2),
+                'hash'               => $signature['hash'],
+                'previous_hash'      => $signature['previous_hash'],
+                'completed_at'       => $signature['completed_at'],
                 'preparation_status' => 'not_accepted',
                 'status'             => 'completed',
             ]);
 
-            foreach ($orderItems as $item) {
-                OrderItem::create([
-                    'order_id'     => $order->id,
-                    'product_id'   => $item['product_id'],
-                    'product_name' => $item['product_name'],
-                    'notes'        => $item['notes'],
-                    'quantity'     => $item['quantity'],
-                    'unit_price'   => $item['unit_price'],
-                    'vat_rate'     => $item['vat_rate'],
-                    'subtotal'     => $item['subtotal'],
-                ]);
-
-                $recipes = Recipe::where('product_id', $item['product_id'])->get();
-                foreach ($recipes as $recipe) {
-                    Ingredient::where('id', $recipe->ingredient_id)->decrement('stock_level', $item['quantity'] * $recipe->quantity);
-                }
+            foreach ($finalItems as $item) {
+                $order->items()->create($item);
             }
+
+            // 🚀 3. SINGLE STOCK DEDUCTION VIA STOCK SERVICE
+            $this->stockService->decrementStockForItems($stockItems);
 
             Payment::create([
                 'order_id' => $order->id,
-                'amount'   => round($finalTotalTtc, 2),
+                'amount'   => round($totalInclVat, 2),
                 'method'   => 'stripe_checkout',
             ]);
 
-            // Increment Coupon Usage Counter
             if ($couponCode) {
                 Coupon::where('code', strtoupper($couponCode))->increment('uses_count');
             }
 
-            // Deduct Redeemed Loyalty Points
             if ($pointsToRedeem > 0 && $clientId) {
                 $client = Client::find($clientId);
                 if ($client) {
@@ -382,7 +368,6 @@ class StripeWebController extends Controller
                 }
             }
 
-            // Award New Loyalty Points (1 pt per €1 spent)
             if ($clientId) {
                 LoyaltyService::awardPointsForOrder($order);
             }
@@ -391,10 +376,10 @@ class StripeWebController extends Controller
 
             try {
                 event(new KdsOrderUpdated('new_orders_synced', $order));
-            } catch (\Exception $e) {}
+            } catch (Throwable $e) {}
 
             return $order;
-        } catch (\Exception $e) {
+        } catch (Throwable $e) {
             DB::rollback();
             Log::error('Stripe Order creation failed: ' . $e->getMessage());
             throw $e;
