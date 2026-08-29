@@ -1,66 +1,77 @@
 <?php
 
-namespace App\Http\Controllers\Api\v1\staff; // 🚀 CORRECT NAMESPACE TO MATCH FOLDER!
+namespace App\Http\Controllers\Api\v1\staff;
 
-use App\Http\Controllers\Controller; // 🚀 Import base Controller
-
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
+use App\Http\Controllers\Controller;
 use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password as PasswordRule;
 
 class AuthController extends Controller
 {
-    public function login(Request $request)
+    /**
+     * Staff Login (Cashiers, Managers, Admins)
+     */
+    public function login(Request $request): JsonResponse
     {
-        $request->validate([
-            'email' => 'required|email',
-            'password' => 'required',
+        $validated = $request->validate([
+            'email'    => ['required', 'email'],
+            'password' => ['required', 'string'],
         ]);
 
-        $user = User::where('email', $request->email)->first();
-       
-    if (!$user) {
-        return response()->json(['message' => 'Staff email not found in users table'], 401);
-    }
-        if (!$user || !Hash::check($request->password, $user->password)) {
-            return response()->json(['message' => 'Invalid credentials'], 401);
+        $user = User::where('email', strtolower(trim($validated['email'])))->first();
+
+        if (!$user || !Hash::check($validated['password'], $user->password)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid staff credentials.',
+            ], 401);
         }
 
-        $token = $user->createToken('auth-token')->plainTextToken;
+        $token = $user->createToken('staff-pos-token')->plainTextToken;
 
         return response()->json([
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
+            'success' => true,
+            'message' => 'Staff login successful.',
+            'user'    => [
+                'id'    => $user->id,
+                'name'  => $user->name,
                 'email' => $user->email,
             ],
-            'token' => $token,
-        ]);
+            'token'   => $token,
+        ], 200);
     }
 
-    public function register(Request $request)
+    /**
+     * Staff Registration (Back-office onboarding)
+     */
+    public function register(Request $request): JsonResponse
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8',
+        $validated = $request->validate([
+            'name'     => ['required', 'string', 'max:255'],
+            'email'    => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
+            'password' => ['required', 'string', PasswordRule::min(8)],
         ]);
 
         $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
+            'name'     => $validated['name'],
+            'email'    => strtolower(trim($validated['email'])),
+            'password' => Hash::make($validated['password']),
         ]);
 
-        $token = $user->createToken('auth-token')->plainTextToken;
+        $token = $user->createToken('staff-pos-token')->plainTextToken;
 
         return response()->json([
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
+            'success' => true,
+            'message' => 'Staff user created successfully.',
+            'user'    => [
+                'id'    => $user->id,
+                'name'  => $user->name,
                 'email' => $user->email,
             ],
-            'token' => $token,
-        ]);
+            'token'   => $token,
+        ], 201);
     }
 }
