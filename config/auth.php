@@ -76,11 +76,11 @@ return [
         //     'driver' => 'database',
         //     'table' => 'users',
         // ],
-            // Add Client Provider
-    'clients' => [
-        'driver' => 'eloquent',
-        'model' => App\Models\Client::class,
-    ],
+        // Add Client Provider
+        'clients' => [
+            'driver' => 'eloquent',
+            'model' => App\Models\Client::class,
+        ],
     ],
 
     /*
@@ -106,6 +106,12 @@ return [
         'users' => [
             'provider' => 'users',
             'table' => env('AUTH_PASSWORD_RESET_TOKEN_TABLE', 'password_reset_tokens'),
+            'expire' => 60,
+            'throttle' => 60,
+        ],
+        'clients' => [
+            'provider' => 'clients',
+            'table' => 'password_reset_tokens',
             'expire' => 60,
             'throttle' => 60,
         ],

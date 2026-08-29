@@ -107,9 +107,11 @@ Route::get('/products/{product}', function (Product $product) {
 |--------------------------------------------------------------------------
 */
 
-// Customer Authentication
-Route::post('/client/register', [ClientAuthController::class, 'register']);
-Route::post('/client/login', [ClientAuthController::class, 'login']);
+// Public Customer Auth Endpoints
+ Route::post('/client/register', [ClientAuthController::class, 'register']);
+    Route::post('/client/login', [ClientAuthController::class, 'login']);
+    Route::post('/client/forgot-password', [ClientAuthController::class, 'forgotPassword']);
+    Route::post('/client/reset-password', [ClientAuthController::class, 'resetPassword']);
 
 // Stripe Checkout & Webhooks
 Route::post('/stripe/checkout-session', [StripeWebController::class, 'createCheckoutSession']);
@@ -146,8 +148,9 @@ Route::middleware('auth:sanctum')->group(function () {
         return $request->user();
     });
     Route::get('/client/profile', [ClientAuthController::class, 'clientProfile']);
-    Route::put('/client/profile', [ClientAuthController::class, 'clientProfile']);
     Route::get('/client/orders', [ClientAuthController::class, 'clientOrders']);
+    Route::put('/client/profile', [ClientAuthController::class, 'updateProfile']);
+    Route::post('/client/logout', [ClientAuthController::class, 'logout']);
 
     // Customer Table Reservations
     Route::get('/client/reservations', [ReservationController::class, 'getClientReservations']);
