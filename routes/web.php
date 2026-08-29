@@ -16,6 +16,7 @@ use App\Http\Controllers\Admin\MenuEngineeringController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\DailyClosureController;
 use App\Http\Controllers\Admin\AdminSettingsController;
+use App\Http\Controllers\Api\v1\catalog\ReservationApiController;
 use App\Http\Controllers\ReservationController;
 
 /*
@@ -92,9 +93,9 @@ Route::middleware(['web', 'auth'])->group(function () {
         Route::get('/reservations/floor-plan', [ReservationController::class, 'floorPlan'])->name('admin.reservations.floor_plan');
 
         // Hostess API Endpoints
-        Route::get('/api/reservations/by-date', [ReservationController::class, 'getReservationsByDate']);
-        Route::post('/api/reservations/phone-booking', [ReservationController::class, 'storePhoneBooking']);
-        Route::post('/api/reservations/{reservation}/status', [ReservationController::class, 'updateStatus']);
+        Route::get('/api/reservations/by-date', [ReservationApiController::class, 'getReservationsByDate']);
+        Route::post('/api/reservations/phone-booking', [ReservationApiController::class, 'storePhoneBooking']);
+        Route::post('/api/reservations/{reservation}/status', [ReservationApiController::class, 'updateStatus']);
     });
 
     // -------------------------------------------------------------

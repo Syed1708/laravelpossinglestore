@@ -1,21 +1,22 @@
 <?php
 
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Models\Product;
 
 // Controllers
-use App\Http\Controllers\Api\OrderSyncController;
-use App\Http\Controllers\KioskOrderController;
-use App\Http\Controllers\ReservationController;
 use App\Http\Controllers\Admin\OnlineOrderController;
+use App\Http\Controllers\Api\v1\catalog\KioskOrderController;
+use App\Http\Controllers\Api\v1\catalog\ReservationApiController;
 use App\Http\Controllers\Api\v1\client\ClientAuthController;
 use App\Http\Controllers\Api\v1\client\CouponApiController;
 use App\Http\Controllers\Api\v1\client\SiteSettingsApiController;
 use App\Http\Controllers\Api\v1\client\StripeWebController;
+use App\Http\Controllers\Api\v1\kds\KdsApiController;
 use App\Http\Controllers\Api\v1\Pos\DayClosureApiController;
+use App\Http\Controllers\Api\v1\Pos\OrderSyncController;
 use App\Http\Controllers\Api\v1\Pos\PosSalesApiController;
 use App\Http\Controllers\Api\v1\staff\AuthController;
+use App\Models\Table;
 
 /*
 |--------------------------------------------------------------------------
@@ -30,30 +31,6 @@ Route::get('/store-status', [SiteSettingsApiController::class, 'storeStatus']);
 // Full Site Branding, Hero Sliders & CMS Settings
 Route::get('/site-settings', [SiteSettingsApiController::class, 'siteSettings']);
 
-// Real-Time Store Hours & Master Status Check
-// Route::get('/store-status', function () {
-//     $settings = StoreSetting::getSettings();
-
-//     return response()->json([
-//         'is_open'               => StoreHoursHelper::isOpen(),
-//         'is_store_open'         => (bool) $settings->is_store_open,
-//         'online_orders_enabled' => StoreHoursHelper::canAcceptOnlineOrders(),
-//         'reservations_enabled'  => StoreHoursHelper::canAcceptReservations(),
-//         'schedule'              => StoreHoursHelper::getScheduleText(),
-//         'closed_message'        => StoreHoursHelper::getClosedMessage(),
-//     ]);
-// });
-
-// // Full Site Branding & CMS Settings (Logo, Colors, Hero Banners)
-// Route::get('/site-settings', function () {
-//     $settings = StoreSetting::getSettings();
-
-//     return response()->json([
-//         ...$settings->toArray(),
-//         'logo_url'    => $settings->logo_path ? asset('storage/' . $settings->logo_path) : null,
-//         'favicon_url' => $settings->favicon_path ? asset('storage/' . $settings->favicon_path) : null,
-//     ]);
-// });
 
 // 🚀 PUBLIC MENU CATALOG (Eager loads Kiosk Option Groups & Choices)
 Route::get('/menu', function () {
@@ -107,11 +84,18 @@ Route::get('/products/{product}', function (Product $product) {
 |--------------------------------------------------------------------------
 */
 
-// Public Customer Auth Endpoints
- Route::post('/client/register', [ClientAuthController::class, 'register']);
-    Route::post('/client/login', [ClientAuthController::class, 'login']);
-    Route::post('/client/forgot-password', [ClientAuthController::class, 'forgotPassword']);
-    Route::post('/client/reset-password', [ClientAuthController::class, 'resetPassword']);
+// Customer Auth
+Route::prefix('client')->group(function () {
+    Route::post('/register', [ClientAuthController::class, 'register']);
+    Route::post('/login', [ClientAuthController::class, 'login']);
+    Route::post('/forgot-password', [ClientAuthController::class, 'forgotPassword']);
+    Route::post('/reset-password', [ClientAuthController::class, 'resetPassword']);
+});
+
+// Staff / Admin Login
+Route::prefix('admin')->group(function () {
+    Route::post('/login', [AuthController::class, 'login']);
+});
 
 // Stripe Checkout & Webhooks
 Route::post('/stripe/checkout-session', [StripeWebController::class, 'createCheckoutSession']);
@@ -122,12 +106,12 @@ Route::post('/stripe/webhook', [StripeWebController::class, 'handleWebhook']);
 Route::post('/coupons/validate', [CouponApiController::class, 'validateCoupon']);
 Route::post('/kiosk/orders', [KioskOrderController::class, 'storeKioskOrder']);
 
-// Customer Reservation Availability & Booking
-Route::get('/reservations/availability', [ReservationController::class, 'checkAvailability']);
-Route::post('/reservations/online', [ReservationController::class, 'storeOnline']);
+// Public Table Availability & Booking
+Route::get('/reservations/availability', [ReservationApiController::class, 'checkAvailability']);
+Route::post('/reservations/online', [ReservationApiController::class, 'storeOnline']);
 
-// Staff / Admin Login
-Route::post('/admin/login', [AuthController::class, 'login']);
+
+
 
 
 /*
@@ -138,57 +122,58 @@ Route::post('/admin/login', [AuthController::class, 'login']);
 
 Route::middleware('auth:sanctum')->group(function () {
 
-    // -------------------------------------------------------------
-    // A. CUSTOMER PORTAL ROUTES
-    // -------------------------------------------------------------
-    Route::get('/user', function (Request $request) {
-        return $request->user();
-    });
-    Route::get('/client/me', function (Request $request) {
-        return $request->user();
-    });
-    Route::get('/client/profile', [ClientAuthController::class, 'clientProfile']);
-    Route::get('/client/orders', [ClientAuthController::class, 'clientOrders']);
-    Route::put('/client/profile', [ClientAuthController::class, 'updateProfile']);
-    Route::post('/client/logout', [ClientAuthController::class, 'logout']);
+    // --- A. CUSTOMER PORTAL ---
+    Route::prefix('client')->group(function () {
+        Route::get('/profile', [ClientAuthController::class, 'clientProfile']);
+        Route::put('/profile', [ClientAuthController::class, 'updateProfile']);
+        Route::get('/orders', [ClientAuthController::class, 'clientOrders']);
+        Route::post('/logout', [ClientAuthController::class, 'logout']);
 
-    // Customer Table Reservations
-    Route::get('/client/reservations', [ReservationController::class, 'getClientReservations']);
-    Route::post('/client/reservations/{reservation}/cancel', [ReservationController::class, 'cancelClientReservation']);
-
-
-    // -------------------------------------------------------------
-    // B. POS TERMINAL & HOSTESS ROUTES
-    // -------------------------------------------------------------
-    Route::get('/tables', function () {
-        return response()->json(\App\Models\Table::where('is_active', true)->orderBy('table_number')->get());
+        // Customer Table Reservations
+        Route::get('/reservations', [ReservationApiController::class, 'getClientReservations']);
+        Route::post('/reservations/{reservation}/cancel', [ReservationApiController::class, 'cancelClientReservation']);
     });
 
-    // POS Order Sync
-    Route::post('/orders/sync', [OrderSyncController::class, 'sync']);
 
-    // POS Day Closures (Z-Reports)
-    Route::get('/pos/z-closure/summary', [DayClosureApiController::class, 'getShiftSummary']);
-    Route::post('/pos/z-closure/confirm', [DayClosureApiController::class, 'closeDay']);
-    Route::get('/pos/z-closure/history', [DayClosureApiController::class, 'getClosureHistory']);
+    // --- B. WEB POS & REGISTER OPERATIONS ---
+    Route::prefix('pos')->group(function () {
+        Route::post('/orders/sync', [OrderSyncController::class, 'sync']);
 
-    // POS Kiosk Orders
-    Route::get('/pos/kiosk-unpaid-orders', [KioskOrderController::class, 'getUnpaidKioskOrders']);
-    Route::post('/pos/kiosk-orders/{order}/pay', [KioskOrderController::class, 'payKioskOrderAtCounter']);
-    // POS Kiosk Order Cancellation
-    Route::post('/pos/kiosk-orders/{order}/cancel', [KioskOrderController::class, 'cancelUnpaidKioskOrder']);
-    // POS Sales History & Refunds
-    Route::get('/pos/sales', [PosSalesApiController::class, 'getSalesHistory']);
-    Route::get('/pos/sales/{id}', [PosSalesApiController::class, 'showOrderDetails']);
-    Route::post('/pos/refund/{id}', [PosSalesApiController::class, 'refundOrder']);
+        // Day Closures (Z-Reports)
+        Route::get('/z-closure/summary', [DayClosureApiController::class, 'getShiftSummary']);
+        Route::post('/z-closure/confirm', [DayClosureApiController::class, 'closeDay']);
+        Route::get('/z-closure/history', [DayClosureApiController::class, 'getClosureHistory']);
 
-    // Online Orders Dispatcher
+        // Unpaid Kiosk Counter Processing
+        Route::get('/kiosk-unpaid-orders', [KioskOrderController::class, 'getUnpaidKioskOrders']);
+        Route::post('/kiosk-orders/{order}/pay', [KioskOrderController::class, 'payKioskOrderAtCounter']);
+        Route::post('/kiosk-orders/{order}/cancel', [KioskOrderController::class, 'cancelUnpaidKioskOrder']);
+
+        // Sales History & Refunds
+        Route::get('/sales', [PosSalesApiController::class, 'getSalesHistory']);
+        Route::get('/sales/{id}', [PosSalesApiController::class, 'showOrderDetails']);
+        Route::post('/refund/{id}', [PosSalesApiController::class, 'refundOrder']);
+    });
+
+    // --- C. KITCHEN DISPLAY SYSTEM (KDS) API ---
+    // KDS API Endpoints
+    Route::prefix('kds')->group(function () {
+        Route::get('/orders/chef', [KdsApiController::class, 'getChefOrders']);
+        Route::get('/orders/packer', [KdsApiController::class, 'getPackerOrders']);
+        Route::post('/orders/{order}/status', [KdsApiController::class, 'updateOrderStatus']);
+        Route::post('/items/{item}/toggle', [KdsApiController::class, 'toggleItemStatus']);
+    });
+
+    // Hostess & Reservations Manager
+    Route::get('/reservations/by-date', [ReservationApiController::class, 'getReservationsByDate']);
+    Route::post('/reservations/phone-booking', [ReservationApiController::class, 'storePhoneBooking']);
+    Route::post('/reservations/{reservation}/status', [ReservationApiController::class, 'updateStatus']);
+
+    // --- D. ONLINE DISPATCHER & HOSTESS API ---
     Route::get('/online-orders', [OnlineOrderController::class, 'getOnlineOrders']);
     Route::post('/online-orders/{order}/accept', [OnlineOrderController::class, 'acceptOrder']);
     Route::post('/online-orders/{order}/reject', [OnlineOrderController::class, 'rejectOrder']);
 
-    // Hostess Reservations Manager
-    Route::get('/reservations/by-date', [ReservationController::class, 'getReservationsByDate']);
-    Route::post('/reservations/phone-booking', [ReservationController::class, 'storePhoneBooking']);
-    Route::post('/reservations/{reservation}/status', [ReservationController::class, 'updateStatus']);
+    Route::get('/tables', fn() => response()->json(Table::where('is_active', true)->orderBy('table_number')->get()));
+   
 });

@@ -1,11 +1,13 @@
 <?php
-
 namespace App\Http\Controllers;
+
+
 
 use App\Models\Reservation;
 use App\Models\Table;
 use App\Events\ReservationUpdated;
 use App\Helpers\StoreHoursHelper;
+use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
