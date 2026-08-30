@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Events\KdsOrderUpdated;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 // use Illuminate\Support\Facades\DB;
 
@@ -22,83 +23,81 @@ class KdsController extends Controller
     }
 
     /**
-     * API: Get active hot orders for the Chef (Filters out Drinks!).
+     * API: Get active hot food orders for Chef Screen.
+     * 🚀 100% DYNAMIC: Queries categories where show_on_chef_kds is true (Zero hardcoded names!)
      */
-    public function getChefOrders()
+    public function getChefOrders(): JsonResponse
     {
         $orders = Order::whereIn('preparation_status', ['accepted', 'pending', 'preparing'])
             ->with(['items' => function ($query) {
                 $query->whereHas('product.category', function ($subQuery) {
-                    $subQuery->where('name', '!=', 'Boissons Gazeuses')
-                        ->where('name', '!=', 'Eaux & Jus')
-                        ->where('name', '!=', 'Café & Boissons Chaudes');
+                    $subQuery->where('show_on_chef_kds', true);
                 });
-            }])
+            }, 'client'])
             ->orderBy('completed_at', 'asc')
             ->get();
 
-        $filteredOrders = $orders->filter(function ($order) {
-            return $order->items->count() > 0;
-        })->values();
+        // Only return tickets that have at least 1 item for the chef to cook
+        $filteredOrders = $orders->filter(fn($order) => $order->items->isNotEmpty())->values();
 
-        return response()->json($filteredOrders);
+        return response()->json($filteredOrders, 200);
     }
 
     /**
-     * API: Get active orders for the Packer (Includes Drinks & calculates has_kitchen_items).
+     * API: Get active orders for Packer Screen.
      */
-    public function getPackerOrders()
+    public function getPackerOrders(): JsonResponse
     {
         $orders = Order::whereIn('preparation_status', ['accepted', 'pending', 'preparing', 'ready'])
-            ->with('items.product.category')
+            ->with(['items.product.category', 'client'])
             ->orderBy('completed_at', 'asc')
             ->get();
 
         foreach ($orders as $order) {
             $order->has_kitchen_items = $order->items->contains(function ($item) {
-                $categoryName = $item->product->category->name ?? '';
-                return !in_array($categoryName, [
-                    'Boissons Gazeuses',
-                    'Eaux & Jus',
-                    'Café & Boissons Chaudes'
-                ]);
+                return (bool) ($item->product->category->show_on_chef_kds ?? true);
             });
         }
 
-        return response()->json($orders);
+        return response()->json($orders, 200);
     }
 
     /**
-     * API: Toggle item status.
-     * 🚀 THE FIX: Uses implicit route model binding (OrderItem $item) instead of plain IDs! [1.1.2]
+     * API: Toggle item preparation status (pending <-> done)
      */
-    public function toggleItemStatus(Request $request, OrderItem $item)
+    public function toggleItemStatus(Request $request, OrderItem $item): JsonResponse
     {
-        $newStatus = $item->item_status === 'pending' ? 'done' : 'pending';
-
+        $newStatus = ($item->item_status === 'pending') ? 'done' : 'pending';
         $item->update(['item_status' => $newStatus]);
 
-        event(new KdsOrderUpdated('item_toggled'));
+        event(new KdsOrderUpdated('item_toggled', $item->order));
 
-        return response()->json(['success' => true, 'new_status' => $newStatus]);
+        return response()->json([
+            'success'    => true,
+            'new_status' => $newStatus,
+            'item_id'    => $item->id,
+            'message'    => 'Item status updated.',
+        ], 200);
     }
 
     /**
-     * API: Update order status.
-     * 🚀 THE FIX: Uses implicit route model binding (Order $order) instead of plain IDs! [1.1.2]
+     * API: Update preparation status for an entire order
      */
-
-    public function updateOrderStatus(Request $request, Order $order)
+    public function updateOrderStatus(Request $request, Order $order): JsonResponse
     {
-        $request->validate([
-            'status' => 'required|in:pending,preparing,ready,delivered',
+        $validated = $request->validate([
+            'status' => ['required', 'in:not_accepted,accepted,pending,preparing,ready,delivered,cancelled'],
         ]);
 
-        $order->update(['preparation_status' => $request->status]);
+        $order->update(['preparation_status' => $validated['status']]);
 
-        // 🚀 Pass $order so the Client screen gets the updated preparation_status live!
         event(new KdsOrderUpdated('order_status_updated', $order));
 
-        return response()->json(['success' => true, 'new_status' => $order->preparation_status]);
+        return response()->json([
+            'success'    => true,
+            'new_status' => $order->preparation_status,
+            'order_id'   => $order->id,
+            'message'    => "Order preparation status updated to {$order->preparation_status}.",
+        ], 200);
     }
 }

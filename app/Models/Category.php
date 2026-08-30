@@ -12,6 +12,11 @@ class Category extends Model
  
     protected $fillable = [
         'name',
+        'show_on_chef_kds',
+    ];
+
+    protected $casts = [
+        'show_on_chef_kds' => 'boolean',
     ];
 
    

@@ -12,58 +12,39 @@ use Illuminate\Http\JsonResponse;
 class KdsApiController extends Controller
 {
     /**
-     * API: Get active hot food orders for Chef Screen (Excludes beverages).
+     * API: Get active hot food orders for Chef Screen.
+     * 🚀 100% DYNAMIC: Queries categories where show_on_chef_kds is true (Zero hardcoded names!)
      */
     public function getChefOrders(): JsonResponse
     {
-        $excludedCategories = [
-            'Boissons Gazeuses',
-            'Eaux & Jus',
-            'Café & Boissons Chaudes',
-            'Soft Drinks',
-            'Beverages',
-            'Hot Drinks',
-            'Drinks',
-        ];
-
         $orders = Order::whereIn('preparation_status', ['accepted', 'pending', 'preparing'])
-            ->with(['items' => function ($query) use ($excludedCategories) {
-                $query->whereHas('product.category', function ($subQuery) use ($excludedCategories) {
-                    $subQuery->whereNotIn('name', $excludedCategories);
+            ->with(['items' => function ($query) {
+                $query->whereHas('product.category', function ($subQuery) {
+                    $subQuery->where('show_on_chef_kds', true);
                 });
             }, 'client'])
             ->orderBy('completed_at', 'asc')
             ->get();
 
-        $filteredOrders = $orders->filter(fn($order) => $order->items->count() > 0)->values();
+        // Only return tickets that have at least 1 item for the chef to cook
+        $filteredOrders = $orders->filter(fn($order) => $order->items->isNotEmpty())->values();
 
         return response()->json($filteredOrders, 200);
     }
 
     /**
-     * API: Get all active orders for Packer Screen (Includes cold beverages & flags kitchen items).
+     * API: Get active orders for Packer Screen.
      */
     public function getPackerOrders(): JsonResponse
     {
-        $excludedCategories = [
-            'Boissons Gazeuses',
-            'Eaux & Jus',
-            'Café & Boissons Chaudes',
-            'Soft Drinks',
-            'Beverages',
-            'Hot Drinks',
-            'Drinks',
-        ];
-
         $orders = Order::whereIn('preparation_status', ['accepted', 'pending', 'preparing', 'ready'])
             ->with(['items.product.category', 'client'])
             ->orderBy('completed_at', 'asc')
             ->get();
 
         foreach ($orders as $order) {
-            $order->has_kitchen_items = $order->items->contains(function ($item) use ($excludedCategories) {
-                $categoryName = $item->product->category->name ?? '';
-                return !in_array($categoryName, $excludedCategories);
+            $order->has_kitchen_items = $order->items->contains(function ($item) {
+                return (bool) ($item->product->category->show_on_chef_kds ?? true);
             });
         }
 
@@ -89,7 +70,7 @@ class KdsApiController extends Controller
     }
 
     /**
-     * API: Update preparation status for an order
+     * API: Update preparation status for an entire order
      */
     public function updateOrderStatus(Request $request, Order $order): JsonResponse
     {
