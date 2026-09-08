@@ -20,6 +20,12 @@ return [
     'allowed_methods' => ['*'],
 
     'allowed_origins' => ['*'],
+        // 🚀 Lock down to your domain in production:
+    // 'allowed_origins' => [
+    //     'http://localhost:3000',
+    //     'https://burgerpalace.fr',
+    //     'https://www.burgerpalace.fr',
+    // ],
 
     'allowed_origins_patterns' => [],
 

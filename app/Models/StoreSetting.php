@@ -73,8 +73,37 @@ class StoreSetting extends Model
     /**
      * 🚀 Singleton Helper: Always returns row #1
      */
+    /**
+     * 🚀 Guaranteed Singleton: Returns row #1 or creates it with safe default values
+     */
     public static function getSettings(): self
     {
-        return static::find(1) ?? static::first() ?? static::create(['id' => 1]);
+        return static::find(1) ?? static::first() ?? static::create([
+            'id'                        => 1,
+            'country'                   => 'FR',
+            'currency'                  => 'EUR',
+            'default_payroll_frequency' => 'monthly',
+            'is_store_open'             => true,
+            'online_orders_enabled'     => true,
+            'reservations_enabled'      => true,
+            'shift1_start'              => '10:00',
+            'shift1_end'                => '14:30',
+            'shift2_start'              => '18:30',
+            'shift2_end'                => '22:30',
+            'closed_message'            => 'Restaurant is currently closed for online ordering.',
+            'hero_title'                => 'Burger Palace Bordeaux',
+            'hero_subtitle'             => 'Executive Gourmet Burgers prepared fresh with local ingredients.',
+            'promo_banner_text'         => '🔥 10% OFF on all Click & Collect orders tonight!',
+            'promo_active'              => true,
+            'primary_color'             => '#f59e0b',
+            'secondary_color'           => '#10b981',
+            'font_family'               => 'sans-serif',
+            'show_how_it_works'         => true,
+            'show_featured'             => true,
+            'show_why_choose_us'        => true,
+            'show_newsletter'           => true,
+            'show_faq'                  => true,
+            'show_contact'              => true,
+        ]);
     }
 }
