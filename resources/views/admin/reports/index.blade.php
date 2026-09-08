@@ -1,14 +1,12 @@
-<!-- resources/views/admin/reports/index.blade.php -->
 @extends('tyro-dashboard::layouts.app')
 
-@section('title', 'Rapports de Vente')
+@section('title', 'Sales & Financial Reports')
 
 @section('breadcrumb')
-<span>Rapports (PDF)</span>
+<span>Reports (PDF &amp; Analytics)</span>
 @endsection
 
 @push('styles')
-<!-- 🚀 CUSTOM STYLE OVERRIDES: Forces raw inputs to perfectly match Tyro's theme -->
 <style>
     .pos-filter-form .form-group {
         display: flex;
@@ -27,7 +25,7 @@
         border: 1px solid var(--border, #e2e8f0);
         border-radius: 6px;
         transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-        height: 38px; /* Standard Tyro input height */
+        height: 38px;
         box-sizing: border-box;
     }
 
@@ -37,7 +35,6 @@
         box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.15);
     }
 
-    /* Custom SVG Dropdown Arrow to replace browser defaults */
     .pos-filter-form select.form-control {
         appearance: none;
         -webkit-appearance: none;
@@ -49,7 +46,6 @@
         padding-right: 2.5rem;
     }
 
-    /* Standard height alignment for the filter button */
     .pos-filter-form .btn {
         height: 38px;
         display: flex;
@@ -58,58 +54,75 @@
         font-weight: bold;
         margin-bottom: 0;
     }
+
+    @media (max-width: 768px) {
+        .reports-grid-2 {
+            grid-template-columns: 1fr !important;
+        }
+    }
 </style>
 @endpush
 
 @section('content')
-<div class="page-header">
-    <div class="page-header-row">
-        <div>
-            <h1 class="page-title">📅 Sales reports</h1>
-            <p class="page-description">Filtrez et exportez vos données de vente par période.</p>
-        </div>
+<div class="page-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 1.5rem;">
+    <div>
+        <h1 class="page-title">📅 Sales &amp; Financial Reports</h1>
+        <p class="page-description">Filter, analyze, and export sales, tax, and accounting reports by date range.</p>
     </div>
+
+    <!-- 🚀 NF525 Daily Z-Closure Trigger (Handled by DailyClosureController::closeDay) -->
+    @if($isAdmin)
+    <form action="{{ route('admin.closures.close') }}" method="POST" onsubmit="return confirm('⚠️ ATTENTION: Are you sure you want to close the day?\n\nThis will permanently freeze and cryptographically seal all open orders into an NF525 Z-Report, and email a PDF copy to management.');">
+        @csrf
+        <button type="submit" class="btn" style="background: #dc2626; color: white; border: none; padding: 0.5rem 1.25rem; font-weight: 700; border-radius: 6px; display: flex; align-items: center; gap: 8px; box-shadow: 0 2px 4px rgba(220, 38, 38, 0.2);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px;">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+            Seal Daily Z-Report
+        </button>
+    </form>
+    @endif
 </div>
 
-<!-- 1. DATE FILTER & REPORT SELECTION FORM CARD -->
+<!-- 1. DATE FILTER & REPORT SELECTION CARD -->
 <div class="card" style="margin-bottom: 2rem;">
     <div class="card-body" style="padding: 1.25rem;">
         <form action="{{ route('admin.reports.index') }}" method="GET" class="pos-filter-form" style="display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap; width: 100%;">
             
             <!-- Start Date -->
             <div class="form-group" style="flex: 1; min-width: 150px;">
-                <label class="form-label" style="font-weight: bold; margin-bottom: 5px; display: block; color: var(--foreground);">Date de Début</label>
-                <input type="date" name="start_date" value="{{ $startDate }}" class="form-control">
+                <label class="form-label" style="font-weight: bold; margin-bottom: 5px; display: block; color: var(--foreground);">Start Date</label>
+                <input type="date" name="start_date" id="filter_start_date" value="{{ $startDate }}" class="form-control">
             </div>
 
             <!-- End Date -->
             <div class="form-group" style="flex: 1; min-width: 150px;">
-                <label class="form-label" style="font-weight: bold; margin-bottom: 5px; display: block; color: var(--foreground);">Date de Fin</label>
-                <input type="date" name="end_date" value="{{ $endDate }}" class="form-control">
+                <label class="form-label" style="font-weight: bold; margin-bottom: 5px; display: block; color: var(--foreground);">End Date</label>
+                <input type="date" name="end_date" id="filter_end_date" value="{{ $endDate }}" class="form-control">
             </div>
 
-            <!-- Select Report Type Dropdown -->
+            <!-- Select Report Type Dropdown (State-preserved) -->
             <div class="form-group" style="flex: 1.5; min-width: 220px;">
-                <label class="form-label" style="font-weight: bold; margin-bottom: 5px; display: block; color: var(--foreground);">Type de Rapport (PDF)</label>
+                <label class="form-label" style="font-weight: bold; margin-bottom: 5px; display: block; color: var(--foreground);">Report Export Type (PDF)</label>
                 <select name="report_type" id="report_type" class="form-control">
-                    <option value="p_and_l">📈 Compte de Résultat (P&L global)</option>
-                    <option value="sales">📊 Rapport de Ventes & TVA (Sales)</option>
-                    <option value="purchases">📦 Approvisionnements (Purchases)</option>
-                    <option value="expenses">💸 Dépenses de Fonctionnement (Expenses)</option>
+                    <option value="p_and_l" {{ request('report_type') === 'p_and_l' ? 'selected' : '' }}>📈 Profit &amp; Loss Statement (P&amp;L)</option>
+                    <option value="sales" {{ request('report_type') === 'sales' ? 'selected' : '' }}>📊 Sales &amp; VAT Tax Ledger</option>
+                    <option value="purchases" {{ request('report_type') === 'purchases' ? 'selected' : '' }}>📦 Supplier Purchases &amp; Deliveries</option>
+                    <option value="expenses" {{ request('report_type') === 'expenses' ? 'selected' : '' }}>💸 Operating Expenses Ledger</option>
                 </select>
             </div>
 
             <div style="display: flex; gap: 10px; flex: 0 0 auto;">
                 <button type="submit" class="btn btn-primary" style="padding: 0 1.5rem; margin: 0;">
-                    🔍 Filtrer
+                    🔍 Filter
                 </button>
                 
-                <a href="#" onclick="triggerPdfDownload(event)" class="btn" style="background-color: var(--success); border-color: var(--success); color: white; padding: 0 1.5rem; margin: 0; gap: 8px;">
+                <button type="button" onclick="triggerPdfDownload(event)" class="btn" style="background-color: var(--success, #10b981); border: 1px solid var(--success, #10b981); color: white; padding: 0 1.5rem; margin: 0; gap: 8px;">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px;">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
-                    Télécharger PDF
-                </a>
+                    Download PDF
+                </button>
             </div>
         </form>
     </div>
@@ -117,6 +130,7 @@
 
 <!-- 2. TOTALS STATS GRID -->
 <div class="stats-grid" style="margin-bottom: 2rem;">
+    <!-- Gross Sales TTC -->
     <div class="stat-card">
         <div class="stat-icon stat-icon-primary">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -124,11 +138,12 @@
             </svg>
         </div>
         <div class="stat-content">
-            <div class="stat-label">Ventes Totales (TTC)</div>
-            <div class="stat-value" style="color: var(--primary);">{{ number_format($totals->total_ttc, 2, ',', ' ') }} €</div>
+            <div class="stat-label">Gross Revenue (TTC)</div>
+            <div class="stat-value" style="color: var(--primary);">{{ $currencySymbol }}{{ number_format($totals->total_ttc ?? 0, 2) }}</div>
         </div>
     </div>
 
+    <!-- Net Sales HT -->
     <div class="stat-card">
         <div class="stat-icon" style="background: rgba(100, 116, 139, 0.1); color: rgb(100, 116, 139);">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -136,11 +151,12 @@
             </svg>
         </div>
         <div class="stat-content">
-            <div class="stat-label">Chiffre d'Affaires (HT)</div>
-            <div class="stat-value" style="color: rgb(100, 116, 139);">{{ number_format($totals->total_ht, 2, ',', ' ') }} €</div>
+            <div class="stat-label">Net Turnover (HT)</div>
+            <div class="stat-value" style="color: rgb(100, 116, 139);">{{ $currencySymbol }}{{ number_format($totals->total_ht ?? 0, 2) }}</div>
         </div>
     </div>
 
+    <!-- Total Collected VAT -->
     <div class="stat-card">
         <div class="stat-icon stat-icon-success">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -148,29 +164,38 @@
             </svg>
         </div>
         <div class="stat-content">
-            <div class="stat-label">TVA Total Collectée</div>
-            <div class="stat-value" style="color: var(--success);">{{ number_format($totals->total_tva, 2, ',', ' ') }} €</div>
+            <div class="stat-label">Collected VAT (TVA)</div>
+            <div class="stat-value" style="color: var(--success, #10b981);">{{ $currencySymbol }}{{ number_format($totals->total_tva ?? 0, 2) }}</div>
         </div>
     </div>
 </div>
 
-<!-- 3. SPLIT ROW: Payment Methods & VAT Breakdown -->
-<div class="grid-2">
-    <!-- Card Left: Payments -->
+<!-- 3. SPLIT ROW 1: Payment Methods & VAT Breakdown -->
+<div class="grid-2 reports-grid-2" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 2rem;">
+    <!-- Card Left: Payment Methods -->
     <div class="card">
-        <div class="card-header">
-            <h3 class="card-title">💳 Modes de Règlement</h3>
+        <div class="card-header" style="border-bottom: 1px solid var(--border); padding: 1rem 1.25rem;">
+            <h3 class="card-title" style="margin: 0; font-size: 1.1rem; font-weight: bold;">💳 Payment Methods Breakdown</h3>
         </div>
-        <div class="card-body">
+        <div class="card-body" style="padding: 1.25rem;">
             @if($payments->isEmpty())
-                <p style="color: var(--muted-foreground); text-align: center; padding: 1.5rem 0;">Aucune transaction réglée pour cette période.</p>
+                <p style="color: var(--muted-foreground); text-align: center; padding: 1.5rem 0;">No completed transactions for this period.</p>
             @else
                 @foreach($payments as $payment)
+                    @php
+                        $methodLabel = match($payment->method) {
+                            'cash'            => '💵 Cash (Till)',
+                            'card'            => '💳 Card (Terminal)',
+                            'stripe_checkout' => '🌐 Stripe (Online)',
+                            'card_terminal'   => '📱 Card (Kiosk Terminal)',
+                            'split'           => '⚖️ Split Payment',
+                            'bank_transfer'   => '🏦 Bank Transfer',
+                            default           => '🎟️ ' . ucfirst($payment->method),
+                        };
+                    @endphp
                     <div style="display: flex; justify-content: space-between; align-items: center; background: var(--muted); padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 0.75rem;">
-                        <span style="font-weight: 600; text-transform: capitalize; color: var(--foreground);">
-                            @if($payment->method === 'cash') 💵 Espèces @elseif($payment->method === 'card') 💳 Carte @else 🎟️ Ticket Resto @endif
-                        </span>
-                        <strong style="font-size: 1.1rem; color: var(--foreground);">{{ number_format($payment->total, 2, ',', ' ') }} €</strong>
+                        <span style="font-weight: 600; color: var(--foreground);">{{ $methodLabel }}</span>
+                        <strong style="font-size: 1.05rem; color: var(--foreground);">{{ $currencySymbol }}{{ number_format($payment->total, 2) }}</strong>
                     </div>
                 @endforeach
             @endif
@@ -179,20 +204,20 @@
 
     <!-- Card Right: VAT Bracket Breakdown -->
     <div class="card">
-        <div class="card-header">
-            <h3 class="card-title">⚖️ Répartition de la TVA</h3>
+        <div class="card-header" style="border-bottom: 1px solid var(--border); padding: 1rem 1.25rem;">
+            <h3 class="card-title" style="margin: 0; font-size: 1.1rem; font-weight: bold;">⚖️ French VAT (TVA) Tax Breakdown</h3>
         </div>
-        <div class="card-body">
+        <div class="card-body" style="padding: 1.25rem;">
             @if($vatBreakdown->isEmpty())
-                <p style="color: var(--muted-foreground); text-align: center; padding: 1.5rem 0;">Aucun produit vendu pour cette période.</p>
+                <p style="color: var(--muted-foreground); text-align: center; padding: 1.5rem 0;">No product sales recorded for this period.</p>
             @else
                 @foreach($vatBreakdown as $bracket)
-                    <div style="display: flex; justify-content: space-between; align-items: center; border-left: 4px solid var(--success); background: var(--muted); padding: 0.75rem 1rem; border-radius: 0 8px 8px 0; margin-bottom: 0.75rem; padding-left: 1.25rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-left: 4px solid var(--success, #10b981); background: var(--muted); padding: 0.75rem 1rem; border-radius: 0 8px 8px 0; margin-bottom: 0.75rem; padding-left: 1.25rem;">
                         <div>
-                            <strong style="font-size: 1rem; display: block; color: var(--foreground);">Taux {{ number_format($bracket->vat_rate, 1, ',', ' ') }}%</strong>
-                            <span style="font-size: 0.75rem; color: var(--muted-foreground);">Chiffre TTC: {{ number_format($bracket->total_ttc, 2, ',', ' ') }} €</span>
+                            <strong style="font-size: 1rem; display: block; color: var(--foreground);">VAT Rate {{ number_format($bracket->vat_rate, 1) }}%</strong>
+                            <span style="font-size: 0.75rem; color: var(--muted-foreground);">Gross (TTC): {{ $currencySymbol }}{{ number_format($bracket->total_ttc, 2) }}</span>
                         </div>
-                        <strong style="color: var(--success); font-size: 1.1rem;">+{{ number_format($bracket->collected_vat, 2, ',', ' ') }} €</strong>
+                        <strong style="color: var(--success, #10b981); font-size: 1.05rem;">+{{ $currencySymbol }}{{ number_format($bracket->collected_vat, 2) }}</strong>
                     </div>
                 @endforeach
             @endif
@@ -200,12 +225,64 @@
     </div>
 </div>
 
-<!-- JavaScript to handle dynamic PDF parameters -->
+<!-- 4. SPLIT ROW 2: Top Selling Products & Purchases / Expenses -->
+<div class="grid-2 reports-grid-2" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 2rem;">
+    <!-- Top 15 Best Selling Products -->
+    <div class="card">
+        <div class="card-header" style="border-bottom: 1px solid var(--border); padding: 1rem 1.25rem;">
+            <h3 class="card-title" style="margin: 0; font-size: 1.1rem; font-weight: bold;">🏆 Top Selling Items (Volume &amp; Turnover)</h3>
+        </div>
+        <div class="card-body" style="padding: 1.25rem; max-height: 380px; overflow-y: auto;">
+            @if($topProducts->isEmpty())
+                <p style="color: var(--muted-foreground); text-align: center; padding: 1.5rem 0;">No sales data available.</p>
+            @else
+                @foreach($topProducts as $idx => $prod)
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0; border-bottom: 1px solid var(--border);">
+                        <div>
+                            <span style="font-weight: bold; color: var(--foreground);">#{{ $idx + 1 }} {{ $prod->product_name }}</span>
+                            <span style="display: block; font-size: 0.75rem; color: var(--muted-foreground);">Qty Sold: {{ $prod->qty_sold }} units</span>
+                        </div>
+                        <strong style="color: var(--primary);">{{ $currencySymbol }}{{ number_format($prod->total_ttc, 2) }}</strong>
+                    </div>
+                @endforeach
+            @endif
+        </div>
+    </div>
+
+    <!-- Operating Costs & Purchases Summary -->
+    <div class="card">
+        <div class="card-header" style="border-bottom: 1px solid var(--border); padding: 1rem 1.25rem;">
+            <h3 class="card-title" style="margin: 0; font-size: 1.1rem; font-weight: bold;">📦 Cost Overview (Deliveries &amp; Overheads)</h3>
+        </div>
+        <div class="card-body" style="padding: 1.25rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; background: var(--muted); padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                <div>
+                    <span style="font-weight: bold; display: block; color: var(--foreground);">📦 Received Supplier Purchases</span>
+                    <span style="font-size: 0.75rem; color: var(--muted-foreground);">{{ $purchasesList->count() }} Delivery Invoices</span>
+                </div>
+                <strong style="color: #ef4444; font-size: 1.05rem;">-{{ $currencySymbol }}{{ number_format($totalPurchasesCost, 2) }}</strong>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; background: var(--muted); padding: 0.75rem 1rem; border-radius: 8px;">
+                <div>
+                    <span style="font-weight: bold; display: block; color: var(--foreground);">💸 Operating &amp; Staff Expenses</span>
+                    <span style="font-size: 0.75rem; color: var(--muted-foreground);">{{ $expensesList->count() }} Recorded Expenses</span>
+                </div>
+                <strong style="color: #ef4444; font-size: 1.05rem;">-{{ $currencySymbol }}{{ number_format($totalExpensesCost, 2) }}</strong>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Dynamic PDF Export JS -->
 <script>
 function triggerPdfDownload(event) {
     event.preventDefault();
     const reportType = document.getElementById('report_type').value;
-    const url = "{{ route('admin.reports.pdf') }}?start_date={{ $startDate }}&end_date={{ $endDate }}&report_type=" + reportType;
+    const startDate  = document.getElementById('filter_start_date').value;
+    const endDate    = document.getElementById('filter_end_date').value;
+
+    const url = "{{ route('admin.reports.pdf') }}?start_date=" + encodeURIComponent(startDate) + "&end_date=" + encodeURIComponent(endDate) + "&report_type=" + encodeURIComponent(reportType);
     window.location.href = url;
 }
 </script>

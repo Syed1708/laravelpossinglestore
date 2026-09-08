@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\v1\Pos;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Events\KdsOrderUpdated;
+use App\Services\Orders\SequenceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -12,6 +13,9 @@ use Carbon\Carbon;
 
 class PosSalesApiController extends Controller
 {
+    public function __construct(
+        protected SequenceService $sequenceService // 👈 Inject SequenceService
+    ) {}
     /**
      * GET /api/v1/pos/sales
      */
@@ -56,7 +60,7 @@ class PosSalesApiController extends Controller
 
         if ($originalOrder->status === 'refunded' || $originalOrder->preparation_status === 'cancelled') {
             return response()->json([
-                'message' => 'Cette commande a déjà fait l\'objet d\'un avoir.'
+                'message' => 'This order has already been refunded or cancelled.',
             ], 400);
         }
 
@@ -71,14 +75,15 @@ class PosSalesApiController extends Controller
             $lastHashOrder = Order::whereNotNull('hash')
                 ->where('hash', '!=', '')
                 ->orderBy('sequence_number', 'desc')
+                ->lockForUpdate()
                 ->first();
 
             $previousHash = ($lastHashOrder && !empty($lastHashOrder->hash))
                 ? $lastHashOrder->hash
                 : '0000000000000000000000000000000000000000000000000000000000000000';
 
-            $lastSeqOrder = Order::orderBy('sequence_number', 'desc')->first();
-            $sequenceNumber = $lastSeqOrder ? ($lastSeqOrder->sequence_number + 1) : 1;
+             // 🚀 REPLACED: Use SequenceService instead of manual Order max query
+            $sequenceNumber = $this->sequenceService->getNextSequenceNumber();
 
             $subtotalExclVat = -abs($originalOrder->subtotal_excl_vat);
             $vatAmount = -abs($originalOrder->vat_amount);
@@ -93,7 +98,7 @@ class PosSalesApiController extends Controller
                 'uuid' => (string) Str::uuid(),
                 'user_id' => auth('sanctum')->id() ?? $originalOrder->user_id,
                 'client_id' => $originalOrder->client_id,
-                'customer_name' => "AVOIR / REMBOURSEMENT (#{$originalOrder->sequence_number})",
+                'customer_name' => "Refund (#{$originalOrder->sequence_number})",
                 'customer_phone' => $originalOrder->customer_phone,
                 'order_type' => 'refund',
                 'sequence_number' => $sequenceNumber,
@@ -110,7 +115,7 @@ class PosSalesApiController extends Controller
             foreach ($originalOrder->items as $item) {
                 $refundOrder->items()->create([
                     'product_id' => $item->product_id,
-                    'product_name' => "AVOIR: {$item->product_name}",
+                    'product_name' => "Refund: {$item->product_name}",
                     'quantity' => -abs($item->quantity),
                     'unit_price' => $item->unit_price,
                     'vat_rate' => $item->vat_rate,
@@ -132,13 +137,13 @@ class PosSalesApiController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => "Avoir #{$sequenceNumber} créé pour la commande #{$originalOrder->sequence_number} !",
+                'message' => "Refund #{$sequenceNumber} created for order #{$originalOrder->sequence_number} !",
                 'refund_order' => $refundOrder,
             ], 200);
 
         } catch (\Exception $e) {
             DB::rollback();
-            return response()->json(['error' => 'Échec du remboursement: ' . $e->getMessage()], 500);
+            return response()->json(['error' => 'Refund failed: ' . $e->getMessage()], 500);
         }
     }
 }
