@@ -17,12 +17,14 @@ use App\Http\Controllers\Api\v1\Pos\DayClosureApiController;
 use App\Http\Controllers\Api\v1\Pos\OrderSyncController;
 use App\Http\Controllers\Api\v1\Pos\PosSalesApiController;
 use App\Http\Controllers\Api\v1\staff\AuthController;
+use Illuminate\Support\Facades\Cache;
 
 /*
 |--------------------------------------------------------------------------
 | 🚀 API VERSION 1 (Base URL: http://127.0.0.1:8000/api/v1)
 |--------------------------------------------------------------------------
 */
+
 Route::prefix('v1')->group(function () {
 
     /*
@@ -38,9 +40,10 @@ Route::prefix('v1')->group(function () {
     Route::get('/site-settings', [SiteSettingsApiController::class, 'siteSettings']);
 
     // Public Menu Catalog (Eager loads Kiosk Option Groups & Choices)
+    // 🚀 1. Cached Menu Catalog (5 Minutes)
     Route::get('/menu', function () {
-        return response()->json(
-            Product::where('is_active', true)
+        return Cache::remember('public_menu_v1', 300, function () {
+            return Product::where('is_active', true)
                 ->with([
                     'category',
                     'optionGroups' => function ($q) {
@@ -48,8 +51,8 @@ Route::prefix('v1')->group(function () {
                             ->with(['options' => fn($opt) => $opt->where('is_active', true)]);
                     }
                 ])
-                ->get()
-        );
+                ->get();
+        });
     });
 
     Route::get('/products', function () {
@@ -170,6 +173,13 @@ Route::prefix('v1')->group(function () {
         Route::post('/online-orders/{order}/accept', [OnlineOrderController::class, 'acceptOrder']);
         Route::post('/online-orders/{order}/reject', [OnlineOrderController::class, 'rejectOrder']);
 
-        Route::get('/tables', fn() => response()->json(Table::where('is_active', true)->orderBy('table_number')->get()));
+        // Route::get('/tables', fn() => response()->json(Table::where('is_active', true)->orderBy('table_number')->get()));
+
+        // 🚀 Cached Tables Layout (10 Minutes)
+        Route::get('/tables', function () {
+            return Cache::remember('active_tables_v1', 600, function () {
+                return Table::where('is_active', true)->orderBy('table_number')->get();
+            });
+        });
     });
 });
