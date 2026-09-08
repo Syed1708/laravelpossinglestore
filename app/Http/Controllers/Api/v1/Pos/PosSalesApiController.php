@@ -110,6 +110,7 @@ class PosSalesApiController extends Controller
                 'completed_at' => $completedAt,
                 'preparation_status' => 'cancelled', // Excludes Avoir from KDS
                 'status' => 'completed',
+                
             ]);
 
             foreach ($originalOrder->items as $item) {
