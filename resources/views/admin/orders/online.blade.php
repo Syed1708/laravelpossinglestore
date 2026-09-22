@@ -351,7 +351,7 @@
         async function fetchOrders() {
             try {
                 const response = await fetch('/admin/api/online-orders');
-                const data = await response.json();
+                const data = await response.json(); 
 
                 // Handle both new { orders, stats } response and legacy array response
                 const orders = Array.isArray(data) ? data : (data.orders || []);
