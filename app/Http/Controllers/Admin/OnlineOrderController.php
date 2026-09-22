@@ -24,8 +24,9 @@ class OnlineOrderController extends Controller
      */
     public function getOnlineOrders()
     {
-        // 🚀 TIMEZONE FIX: Get exact start of today in Paris (00:00:00 Europe/Paris)
-        $startOfToday = Carbon::now('Europe/Paris')->startOfDay();
+        // 🚀 TIMEZONE FIX: Get exact start of today 
+        $startOfToday = \App\Helpers\StoreHoursHelper::today();
+
 
         // 1. Active orders for the dispatcher grid
         $activeOrders = Order::whereIn('preparation_status', ['not_accepted', 'accepted', 'preparing', 'ready'])
@@ -73,8 +74,9 @@ class OnlineOrderController extends Controller
 
         $prepTimeMins = (int) $request->prep_time;
 
-        // 🚀 TIMEZONE FIX: Explicitly use Europe/Paris timezone
-        $now = Carbon::now('Europe/Paris');
+        // 🚀 TIMEZONE FIX: Explicitly use Europe/Paris uk or bd timezone
+        $now = \App\Helpers\StoreHoursHelper::now();
+
         $estimatedReadyAt = (clone $now)->addMinutes($prepTimeMins);
 
         $order->update([

@@ -126,7 +126,8 @@
                     <td>
                         <strong style="color: var(--primary);">€{{ number_format($order->total_incl_vat, 2) }}</strong>
                     </td>
-                    <td>{{ $order->created_at ? $order->created_at->format('M d, Y H:i') : '-' }}</td>
+                    {{-- <td>{{ $order->created_at ? $order->created_at->format('M d, Y H:i') : '-' }}</td> --}}
+                    <td>{{ $order->local_created_at }}</td>
                 </tr>
                 @endforeach
             </tbody>

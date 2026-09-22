@@ -14,9 +14,10 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        $today = Carbon::today('Europe/Paris');
-        $startOfMonth = Carbon::now('Europe/Paris')->startOfMonth();
-        $endOfMonth = Carbon::now('Europe/Paris')->endOfMonth();
+
+        $today = \App\Helpers\StoreHoursHelper::today();
+        $startOfMonth = \App\Helpers\StoreHoursHelper::now()->startOfMonth();
+        $endOfMonth = \App\Helpers\StoreHoursHelper::now()->endOfMonth();
 
         $settings = StoreSetting::getSettings();
         $currencySymbol = $settings->currency === 'GBP' ? '£' : '€';

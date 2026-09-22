@@ -87,11 +87,11 @@ class ReservationApiController extends Controller
             'special_notes'    => ['nullable', 'string', 'max:500'],
         ]);
 
-        $todayInParis = Carbon::now('Europe/Paris')->toDateString();
-        $currentTimeInParis = Carbon::now('Europe/Paris')->format('H:i');
+        $today = StoreHoursHelper::now()->toDateString();
+$currentTime = StoreHoursHelper::now()->format('H:i');
 
         // 🛑 Check 2: Block Past Dates
-        if ($validated['reservation_date'] < $todayInParis) {
+        if ($validated['reservation_date'] < $today) {
             return response()->json([
                 'success' => false,
                 'message' => 'Cannot create a reservation for a past date.',
@@ -99,7 +99,7 @@ class ReservationApiController extends Controller
         }
 
         // 🛑 Check 3: Block Past Time (If booking for today)
-        if ($validated['reservation_date'] === $todayInParis && $validated['reservation_time'] < $currentTimeInParis) {
+        if ($validated['reservation_date'] === $today && $validated['reservation_time'] < $currentTime) {
             return response()->json([
                 'success' => false,
                 'message' => 'Cannot create a reservation for a past time today.',
@@ -186,10 +186,10 @@ class ReservationApiController extends Controller
             'special_notes'    => ['nullable', 'string', 'max:500'],
         ]);
 
-        $todayInParis = Carbon::now('Europe/Paris')->toDateString();
-        $currentTimeInParis = Carbon::now('Europe/Paris')->format('H:i');
+        $today = StoreHoursHelper::now()->toDateString();
+        $currentTime = StoreHoursHelper::now()->format('H:i');
 
-        if ($validated['reservation_date'] === $todayInParis && $validated['reservation_time'] < $currentTimeInParis) {
+        if ($validated['reservation_date'] === $today && $validated['reservation_time'] < $currentTime) {
             return response()->json([
                 'success' => false,
                 'message' => 'Cannot create a reservation for a past time today.',
@@ -246,7 +246,9 @@ class ReservationApiController extends Controller
      */
     public function getReservationsByDate(Request $request): JsonResponse
     {
-        $date = $request->input('date', Carbon::now('Europe/Paris')->toDateString());
+
+        $date = $request->input('date', StoreHoursHelper::now()->toDateString());
+
 
         $reservations = Reservation::whereDate('reservation_date', $date)
             ->with(['table', 'client'])

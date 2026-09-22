@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\StoreHoursHelper;
 use App\Models\Reservation;
 use App\Models\Table;
 use Carbon\Carbon;
@@ -15,7 +16,7 @@ class ReservationController extends Controller
      */
     public function floorPlan(Request $request): View
     {
-        $date = $request->input('date', Carbon::now('Europe/Paris')->toDateString());
+        $date = $request->input('date', StoreHoursHelper::now()->toDateString());
 
         $tables = Table::where('is_active', true)->orderBy('table_number')->get();
 

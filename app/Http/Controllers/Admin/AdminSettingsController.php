@@ -24,8 +24,8 @@ class AdminSettingsController extends Controller
         $settings = StoreSetting::getSettings();
 
         $validated = $request->validate([
-            'country'                   => 'required|string|in:FR,UK',
-            'currency'                  => 'required|string|in:EUR,GBP',
+            'country'                   => 'required|string|in:FR,UK,BD',
+            'currency'                  => 'required|string|in:EUR,GBP,BDT',
             'default_payroll_frequency' => 'required|string|in:monthly,weekly',
             'shift1_start'              => 'required|string',
             'shift1_end'                => 'required|string',

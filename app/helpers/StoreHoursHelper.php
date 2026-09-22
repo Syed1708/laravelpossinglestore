@@ -9,6 +9,22 @@ use Illuminate\Support\Facades\Log;
 class StoreHoursHelper
 {
     /**
+     * 🚀 Get current time in the restaurant's active local timezone
+     */
+    public static function now(): Carbon
+    {
+        return Carbon::now(StoreSetting::timezone());
+    }
+
+    /**
+     * 🚀 Get today's start of day in the restaurant's active local timezone
+     */
+    public static function today(): Carbon
+    {
+        return Carbon::today(StoreSetting::timezone());
+    }
+
+    /**
      * 🚀 Checks if the restaurant is currently OPEN at this exact minute
      */
     public static function isOpen(): bool
@@ -21,8 +37,8 @@ class StoreHoursHelper
             return false;
         }
 
-        // 2. Check if Current Time in Paris falls within Shift 1 or Shift 2
-        $now = Carbon::now('Europe/Paris');
+        // 2. Check if Current Local Time falls within Shift 1 or Shift 2
+        $now = self::now();
         return self::isTimeInSchedule($now->format('H:i'));
     }
 
@@ -58,11 +74,11 @@ class StoreHoursHelper
     {
         $settings = StoreSetting::getSettings();
 
-        $checkTime  = Carbon::parse($time)->format('H:i');
-        $s1Start    = Carbon::parse($settings->shift1_start)->format('H:i');
-        $s1End      = Carbon::parse($settings->shift1_end)->format('H:i');
-        $s2Start    = Carbon::parse($settings->shift2_start)->format('H:i');
-        $s2End      = Carbon::parse($settings->shift2_end)->format('H:i');
+        $checkTime = Carbon::parse($time)->format('H:i');
+        $s1Start   = Carbon::parse($settings->shift1_start)->format('H:i');
+        $s1End     = Carbon::parse($settings->shift1_end)->format('H:i');
+        $s2Start   = Carbon::parse($settings->shift2_start)->format('H:i');
+        $s2End     = Carbon::parse($settings->shift2_end)->format('H:i');
 
         $inShift1 = self::isTimeInShift($checkTime, $s1Start, $s1End);
         $inShift2 = self::isTimeInShift($checkTime, $s2Start, $s2End);

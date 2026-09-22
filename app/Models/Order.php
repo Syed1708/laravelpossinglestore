@@ -10,6 +10,12 @@ class Order extends Model
 {
     use HasCrud; // Enable Tyro Automatic Read-Only Listing
 
+
+    // 🚀 2. Automatically include 'local_created_at' in all JSON API responses
+    protected $appends = [
+        'local_created_at',
+    ];
+
     protected $fillable = [
         'uuid',
         'payment_intent_id',
@@ -41,6 +47,21 @@ class Order extends Model
         'completed_at' => 'datetime',
     ];
 
+
+        /**
+     * 🚀. Centralized Local Time Accessor:
+     * Converts raw database UTC timestamp to the store's active local timezone (France, UK, or Bangladesh)
+     */
+    public function getLocalCreatedAtAttribute(): string
+    {
+        if (!$this->created_at) {
+            return '';
+        }
+
+        return $this->created_at
+            ->setTimezone(StoreSetting::timezone())
+            ->format('d/m/Y H:i');
+    }
     public function user()
     {
         return $this->belongsTo(User::class);

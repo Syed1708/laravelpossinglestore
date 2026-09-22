@@ -71,9 +71,6 @@ class StoreSetting extends Model
     ];
 
     /**
-     * 🚀 Singleton Helper: Always returns row #1
-     */
-    /**
      * 🚀 Guaranteed Singleton: Returns row #1 or creates it with safe default values
      */
     public static function getSettings(): self
@@ -105,5 +102,45 @@ class StoreSetting extends Model
             'show_faq'                  => true,
             'show_contact'              => true,
         ]);
+    }
+
+    /**
+     * 🚀 Get the active timezone identifier based on store country setting
+     */
+    public function getTimezone(): string
+    {
+        return match (strtoupper($this->country ?? 'FR')) {
+            'BD', 'BANGLADESH' => 'Asia/Dhaka',
+            'UK', 'GB'         => 'Europe/London',
+            default            => 'Europe/Paris',
+        };
+    }
+
+    /**
+     * 🚀 Global static helper to quickly get the active store timezone string
+     */
+    public static function timezone(): string
+    {
+        return static::getSettings()->getTimezone();
+    }
+
+    /**
+     * 🚀 Get the active currency symbol (EUR, GBP, BDT)
+     */
+    public function getCurrencySymbol(): string
+    {
+        return match (strtoupper($this->currency ?? 'EUR')) {
+            'GBP'   => '£',
+            'BDT'   => '৳',
+            default => '€',
+        };
+    }
+
+    /**
+     * 🚀 Global static helper to quickly get the active currency symbol
+     */
+    public static function currencySymbol(): string
+    {
+        return static::getSettings()->getCurrencySymbol();
     }
 }

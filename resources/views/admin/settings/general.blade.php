@@ -81,6 +81,7 @@
                         <select name="country" class="form-select" required>
                             <option value="FR" {{ $settings->country === 'FR' ? 'selected' : '' }}>🇫🇷 France (FR)</option>
                             <option value="UK" {{ $settings->country === 'UK' ? 'selected' : '' }}>🇬🇧 United Kingdom (UK)</option>
+                            <option value="BD" {{ $settings->country === 'BD' ? 'selected' : '' }}>🇧🇩 Bangladesh (Asia/Dhaka)</option>
                         </select>
                     </div>
 
@@ -89,13 +90,14 @@
                         <select name="currency" class="form-select" required>
                             <option value="EUR" {{ $settings->currency === 'EUR' ? 'selected' : '' }}>💶 Euro (€)</option>
                             <option value="GBP" {{ $settings->currency === 'GBP' ? 'selected' : '' }}>💷 British Pound (£)</option>
+                            <option value="BDT" {{ $settings->currency === 'BDT' ? 'selected' : '' }}>৳ Bangladeshi Taka (৳)</option>
                         </select>
                     </div>
 
                     <div class="form-group">
                         <label class="form-label" style="font-weight: bold;">Default Payroll Cadence *</label>
                         <select name="default_payroll_frequency" class="form-select" required>
-                            <option value="monthly" {{ $settings->default_payroll_frequency === 'monthly' ? 'selected' : '' }}>Monthly (Standard FR / UK)</option>
+                            <option value="monthly" {{ $settings->default_payroll_frequency === 'monthly' ? 'selected' : '' }}>Monthly (Standard FR / UK/BD)</option>
                             <option value="weekly" {{ $settings->default_payroll_frequency === 'weekly' ? 'selected' : '' }}>Weekly (UK Hospitality)</option>
                         </select>
                     </div>
