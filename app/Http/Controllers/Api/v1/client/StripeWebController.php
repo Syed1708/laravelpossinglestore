@@ -2,25 +2,27 @@
 
 namespace App\Http\Controllers\Api\v1\client;
 
+use App\Events\KdsOrderUpdated;
+use App\Helpers\StoreHoursHelper;
 use App\Http\Controllers\Controller;
+use App\Models\Client;
+use App\Models\Coupon;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\Product;
-use App\Models\Coupon;
-use App\Models\Client;
 use App\Services\Fiscal\FiscalLedgerService;
 use App\Services\Inventory\StockService;
-use App\Services\Orders\SequenceService;
 use App\Services\LoyaltyService;
-use App\Events\KdsOrderUpdated;
-use App\Helpers\StoreHoursHelper;
-use Illuminate\Http\Request;
+use App\Services\Orders\SequenceService;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use Stripe\Stripe;
 use Stripe\Checkout\Session;
+use Stripe\Stripe;
 use Stripe\Webhook;
 use Throwable;
 
@@ -216,20 +218,46 @@ class StripeWebController extends Controller
     }
 
     /**
-     * Shared Atomic Order Creation Engine (Dynamic TVA 5.5% / 10% / 20% & Single Stock Deductions)
+     * 🛡️ Shared Atomic Order Creation Engine with Cache Lock Protection
      */
     private function processOrderCreation($session, array $cart, $clientId = null): Order
     {
         $paymentIntent   = is_object($session) ? ($session->payment_intent ?? null) : ($session['payment_intent'] ?? null);
         $paymentIntentId = is_object($paymentIntent) ? ($paymentIntent->id ?? null) : $paymentIntent;
+        $sessionId       = is_object($session) ? ($session->id ?? null) : ($session['id'] ?? null);
 
-        if (!empty($paymentIntentId)) {
-            $existingOrder = Order::where('payment_intent_id', $paymentIntentId)->first();
-            if ($existingOrder) {
-                return $existingOrder;
+        // 🔒 Lock key based on payment_intent_id or session_id
+        $lockKey = 'order_lock_' . ($paymentIntentId ?: $sessionId ?: Str::random(16));
+
+        try {
+            // 🛡️ Hold lock for 15s; wait up to 5s if webhook and redirect arrive at the exact same millisecond
+            return Cache::lock($lockKey, 15)->block(5, function () use ($session, $cart, $clientId, $paymentIntentId) {
+                // Double-checked locking: check if order was created while waiting for the lock
+                if (!empty($paymentIntentId)) {
+                    $existingOrder = Order::where('payment_intent_id', $paymentIntentId)->first();
+                    if ($existingOrder) {
+                        return $existingOrder;
+                    }
+                }
+
+                return $this->executeOrderTransaction($session, $cart, $clientId, $paymentIntentId);
+            });
+        } catch (LockTimeoutException $e) {
+            if (!empty($paymentIntentId)) {
+                $order = Order::where('payment_intent_id', $paymentIntentId)->first();
+                if ($order) {
+                    return $order;
+                }
             }
+            throw $e;
         }
+    }
 
+    /**
+     * Executes order transaction, NF525 signature, stock deduction, and loyalty points
+     */
+    private function executeOrderTransaction($session, array $cart, $clientId, ?string $paymentIntentId): Order
+    {
         $metadata = [];
         if (isset($session->metadata)) {
             $metadata = is_object($session->metadata) && method_exists($session->metadata, 'toArray')
@@ -278,7 +306,7 @@ class StripeWebController extends Controller
                 ];
             }
 
-            // 🚀 DYNAMIC TVA SPLIT: Proportionally apply discount across items to maintain exact per-product VAT rates
+            // 🚀 DYNAMIC TVA SPLIT: Proportionally apply discount across items
             $discountRatio = ($grossSubtotal > 0) ? max(0, ($grossSubtotal - $discountAmount) / $grossSubtotal) : 1;
 
             $subtotalExclVat = 0;
