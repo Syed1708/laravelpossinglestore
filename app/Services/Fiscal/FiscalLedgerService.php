@@ -21,7 +21,55 @@ class FiscalLedgerService
     // ==========================================
 
     /**
-     * Generates the previous hash and the new SHA-256 cryptographic hash for an individual order.
+     * Standardized payload string builder.
+     * Normalizes zero values to eliminate negative zero ("-0.00") discrepancies.
+     */
+    public static function buildPayloadString(
+        int $sequenceNumber,
+        float $subtotalExclVat,
+        float $vatAmount,
+        float $totalInclVat,
+        Carbon $completedAt,
+        string $previousHash
+    ): string {
+        // Normalize any value between -0.0001 and 0.0001 to absolute positive 0.00
+        $subtotal = abs($subtotalExclVat) < 0.001 ? 0.00 : $subtotalExclVat;
+        $vat      = abs($vatAmount) < 0.001 ? 0.00 : $vatAmount;
+        $total    = abs($totalInclVat) < 0.001 ? 0.00 : $totalInclVat;
+
+        return "{$sequenceNumber}|"
+            . number_format($subtotal, 2, '.', '') . '|'
+            . number_format($vat, 2, '.', '') . '|'
+            . number_format($total, 2, '.', '') . '|'
+            . $completedAt->setTimezone('UTC')->format('Y-m-d\TH:i:s\Z') . '|'
+            . $previousHash;
+    }
+
+    /**
+     * Standardized closure payload string builder.
+     */
+    public static function buildClosurePayloadString(
+        int $zNumber,
+        float $totalHt,
+        float $totalTva,
+        float $totalTtc,
+        Carbon $closedAt,
+        string $previousHash
+    ): string {
+        $cleanHt  = abs($totalHt) < 0.001 ? 0.00 : $totalHt;
+        $cleanTva = abs($totalTva) < 0.001 ? 0.00 : $totalTva;
+        $cleanTtc = abs($totalTtc) < 0.001 ? 0.00 : $totalTtc;
+
+        return "{$zNumber}|"
+            . number_format($cleanHt, 2, '.', '') . '|'
+            . number_format($cleanTva, 2, '.', '') . '|'
+            . number_format($cleanTtc, 2, '.', '') . '|'
+            . $closedAt->setTimezone('UTC')->format('Y-m-d\TH:i:s\Z') . '|'
+            . $previousHash;
+    }
+
+    /**
+     * Generates previous hash and the new SHA-256 cryptographic hash for an individual order.
      *
      * @return array{previous_hash: string, hash: string, completed_at: Carbon}
      */
@@ -32,7 +80,7 @@ class FiscalLedgerService
         float $totalInclVat,
         ?Carbon $completedAt = null
     ): array {
-        $completedAt = $completedAt ?? Carbon::now();
+        $completedAt = $completedAt ? (clone $completedAt)->setTimezone('UTC') : Carbon::now('UTC');
 
         // Lock previous valid hashed order to guarantee linear chaining
         $lastHashOrder = Order::whereNotNull('hash')
@@ -45,13 +93,23 @@ class FiscalLedgerService
             ? $lastHashOrder->hash
             : self::INITIAL_PREVIOUS_HASH;
 
-        // NF525 signature payload string: sequence_number|subtotal_ht|vat_amount|total_ttc|UTC_timestamp|prev_hash
-        $dataToHash = "{$sequenceNumber}|"
-            . number_format($subtotalExclVat, 2, '.', '') . '|'
-            . number_format($vatAmount, 2, '.', '') . '|'
-            . number_format($totalInclVat, 2, '.', '') . '|'
-            . $completedAt->setTimezone('UTC')->format('Y-m-d\TH:i:s\Z') . '|'
-            . $previousHash;
+        // NF525 Monotonic Time Rule: Never allow timestamp to move backwards in the chain
+        if ($lastHashOrder && $lastHashOrder->completed_at) {
+            $lastOrderTime = $lastHashOrder->completed_at->setTimezone('UTC');
+            if ($completedAt->lt($lastOrderTime)) {
+                // If offline order is older than the last chained order, anchor it at current UTC time
+                $completedAt = Carbon::now('UTC');
+            }
+        }
+
+        $dataToHash = self::buildPayloadString(
+            $sequenceNumber,
+            $subtotalExclVat,
+            $vatAmount,
+            $totalInclVat,
+            $completedAt,
+            $previousHash
+        );
 
         $hash = hash('sha256', $dataToHash);
 
@@ -125,9 +183,9 @@ class FiscalLedgerService
             $nextZNumber  = $lastClosure ? ($lastClosure->z_number + 1) : 1;
 
             // 3. Consolidated Financials
-            $totalTtc = (float) $openOrders->sum('total_incl_vat');
-            $totalHt  = (float) $openOrders->sum('subtotal_excl_vat');
-            $totalTva = (float) $openOrders->sum('vat_amount');
+            $totalTtc = round((float) $openOrders->sum('total_incl_vat'), 2);
+            $totalHt  = round((float) $openOrders->sum('subtotal_excl_vat'), 2);
+            $totalTva = round((float) $openOrders->sum('vat_amount'), 2);
 
             // 4. Payment Method Breakdown
             $payments = DB::table('payments')
@@ -135,6 +193,7 @@ class FiscalLedgerService
                 ->select('method', DB::raw('SUM(amount) as total'))
                 ->groupBy('method')
                 ->pluck('total', 'method')
+                ->map(fn($amt) => round((float) $amt, 2))
                 ->toArray();
 
             // 5. Dynamic VAT Breakdown per French tax bracket (5.5%, 10%, 20%)
@@ -155,15 +214,26 @@ class FiscalLedgerService
                 ])
                 ->toArray();
 
-            $closedAt = Carbon::now();
+            // Reconcile VAT breakdown sum against order total TVA to prevent €0.01 rounding drift
+            $breakdownVatSum = array_sum(array_column($vatBreakdown, 'vat'));
+            $vatDiff = round($totalTva - $breakdownVatSum, 2);
+            if ($vatDiff != 0 && !empty($vatBreakdown)) {
+                // Adjust largest bucket by the 1-cent discrepancy so the audit ledger balances perfectly
+                $firstKey = array_key_first($vatBreakdown);
+                $vatBreakdown[$firstKey]['vat'] = round($vatBreakdown[$firstKey]['vat'] + $vatDiff, 2);
+            }
 
-            // 6. Generate SHA-256 Daily Closure Signature
-            $dataToHash = "{$nextZNumber}|"
-                . number_format($totalHt, 2, '.', '') . '|'
-                . number_format($totalTva, 2, '.', '') . '|'
-                . number_format($totalTtc, 2, '.', '') . '|'
-                . $closedAt->setTimezone('UTC')->format('Y-m-d\TH:i:s\Z') . '|'
-                . $previousHash;
+            $closedAt = Carbon::now('UTC');
+
+            // 6. Generate SHA-256 Daily Closure Signature using unified builder
+            $dataToHash = self::buildClosurePayloadString(
+                $nextZNumber,
+                $totalHt,
+                $totalTva,
+                $totalTtc,
+                $closedAt,
+                $previousHash
+            );
 
             $currentHash = hash('sha256', $dataToHash);
 

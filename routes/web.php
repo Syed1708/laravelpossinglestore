@@ -17,6 +17,7 @@ use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\DailyClosureController;
 use App\Http\Controllers\Admin\AdminSettingsController;
 use App\Http\Controllers\Api\v1\catalog\ReservationApiController;
+use App\Http\Controllers\Api\v1\kds\KdsApiController;
 use App\Http\Controllers\ReservationController;
 
 /*
@@ -81,10 +82,10 @@ Route::middleware(['web', 'auth'])->group(function () {
 
     // 🚀 KDS Order Status Update Route with out admin prefix
     // KDS API Endpoints
-    Route::get('/api/orders/chef', [KdsController::class, 'getChefOrders'])->name('admin.kds.orders.chef');
-    Route::get('/api/orders/packer', [KdsController::class, 'getPackerOrders'])->name('admin.kds.orders.packer');
-    Route::post('/api/kds/orders/{order}/status', [App\Http\Controllers\Admin\KdsController::class, 'updateOrderStatus'])->name('admin.kds.order.update');
-    Route::post('/api/kds/items/{item}/toggle', [KdsController::class, 'toggleItemStatus'])->name('admin.kds.item.toggle');
+    Route::get('/api/orders/chef', [KdsApiController::class, 'getChefOrders'])->name('admin.kds.orders.chef');
+    Route::get('/api/orders/packer', [KdsApiController::class, 'getPackerOrders'])->name('admin.kds.orders.packer');
+    Route::post('/api/kds/orders/{order}/status', [KdsApiController::class, 'updateOrderStatus'])->name('admin.kds.order.update');
+    Route::post('/api/kds/items/{item}/toggle', [KdsApiController::class, 'toggleItemStatus'])->name('admin.kds.item.toggle');
 
     // -------------------------------------------------------------
     // 🗺️ C. TABLE FLOOR PLAN & HOSTESS RESERVATIONS

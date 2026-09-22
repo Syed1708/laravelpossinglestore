@@ -2,19 +2,21 @@
 
 namespace App\Http\Controllers\Api\v1\catalog;
 
+use App\Events\ReservationUpdated;
+use App\Helpers\StoreHoursHelper;
 use App\Http\Controllers\Controller;
 use App\Models\Reservation;
 use App\Models\Table;
-use App\Events\ReservationUpdated;
-use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class ReservationApiController extends Controller
 {
     /**
-     * Check table availability for date, time, and guest count
+     * 1. Public API: Check table availability for date, time, and guest count
      */
     public function checkAvailability(Request $request): JsonResponse
     {
@@ -36,10 +38,10 @@ class ReservationApiController extends Controller
             $query->where('zone', $zone);
         }
 
-        // 2-hour reservation conflict window (1 hour before & 1 hour after)
+        // 90-minute conflict window before and after requested booking time
         $bookingTime = Carbon::parse("{$date} {$time}");
-        $windowStart = (clone $bookingTime)->subHours(1)->format('H:i:s');
-        $windowEnd   = (clone $bookingTime)->addHours(1)->format('H:i:s');
+        $windowStart = (clone $bookingTime)->subMinutes(90)->format('H:i:s');
+        $windowEnd   = (clone $bookingTime)->addMinutes(90)->format('H:i:s');
 
         $availableTables = $query->whereDoesntHave('reservations', function ($q) use ($date, $windowStart, $windowEnd) {
             $q->where('reservation_date', $date)
@@ -54,7 +56,7 @@ class ReservationApiController extends Controller
     }
 
     /**
-     * Public Customer Web Self-Booking (/reservation)
+     * 2. Customer Web Self-Booking (/reservation)
      */
     public function storeOnline(Request $request): JsonResponse
     {
@@ -65,6 +67,14 @@ class ReservationApiController extends Controller
                 'success' => false,
                 'message' => 'Authentication required. Please sign in to reserve a table.',
             ], 401);
+        }
+
+        // 🛑 Check 1: Global Settings Toggle
+        if (!StoreHoursHelper::canAcceptReservations()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Table reservations are currently disabled.',
+            ], 422);
         }
 
         $validated = $request->validate([
@@ -80,6 +90,15 @@ class ReservationApiController extends Controller
         $todayInParis = Carbon::now('Europe/Paris')->toDateString();
         $currentTimeInParis = Carbon::now('Europe/Paris')->format('H:i');
 
+        // 🛑 Check 2: Block Past Dates
+        if ($validated['reservation_date'] < $todayInParis) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cannot create a reservation for a past date.',
+            ], 422);
+        }
+
+        // 🛑 Check 3: Block Past Time (If booking for today)
         if ($validated['reservation_date'] === $todayInParis && $validated['reservation_time'] < $currentTimeInParis) {
             return response()->json([
                 'success' => false,
@@ -87,7 +106,15 @@ class ReservationApiController extends Controller
             ], 422);
         }
 
-        // Auto-assign available table
+        // 🛑 Check 4: Block Out-of-Schedule Times
+        if (!StoreHoursHelper::isTimeInSchedule($validated['reservation_time'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Booking time (' . $validated['reservation_time'] . ') is outside opening hours (' . StoreHoursHelper::getScheduleText() . ').',
+            ], 422);
+        }
+
+        // 🚀 Auto-assign table that fits party size
         $bookingTime = Carbon::parse("{$validated['reservation_date']} {$validated['reservation_time']}");
         $windowStart = (clone $bookingTime)->subMinutes(90)->format('H:i:s');
         $windowEnd   = (clone $bookingTime)->addMinutes(90)->format('H:i:s');
@@ -99,12 +126,13 @@ class ReservationApiController extends Controller
                     ->whereIn('status', ['confirmed', 'seated'])
                     ->whereBetween('reservation_time', [$windowStart, $windowEnd]);
             })
+            ->orderBy('capacity', 'asc') // Pick smallest suitable table first
             ->first();
 
         if (!$availableTable) {
             return response()->json([
                 'success' => false,
-                'message' => "No tables available for {$validated['guest_count']} guests on this date/time. Please choose another slot.",
+                'message' => "No tables available for {$validated['guest_count']} guests on {$validated['reservation_date']} at {$validated['reservation_time']}. Please select another time slot.",
             ], 422);
         }
 
@@ -124,7 +152,7 @@ class ReservationApiController extends Controller
 
         try {
             event(new ReservationUpdated('created', $reservation));
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             Log::warning('WebSocket broadcast for reservation failed: ' . $e->getMessage());
         }
 
@@ -136,10 +164,18 @@ class ReservationApiController extends Controller
     }
 
     /**
-     * Staff Cashier Phone Booking
+     * 3. Staff Cashier Phone Booking (/pos or /admin)
      */
     public function storePhoneBooking(Request $request): JsonResponse
     {
+        // 🛑 Check 1: Global Setting Toggle
+        if (!StoreHoursHelper::canAcceptReservations()) {
+            return response()->json([
+                'success' => false,
+                'message' => StoreHoursHelper::getClosedMessage(),
+            ], 422);
+        }
+
         $validated = $request->validate([
             'customer_name'    => ['required', 'string', 'max:255'],
             'customer_phone'   => ['required', 'string', 'max:50'],
@@ -149,6 +185,36 @@ class ReservationApiController extends Controller
             'table_id'         => ['nullable', 'exists:tables,id'],
             'special_notes'    => ['nullable', 'string', 'max:500'],
         ]);
+
+        $todayInParis = Carbon::now('Europe/Paris')->toDateString();
+        $currentTimeInParis = Carbon::now('Europe/Paris')->format('H:i');
+
+        if ($validated['reservation_date'] === $todayInParis && $validated['reservation_time'] < $currentTimeInParis) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cannot create a reservation for a past time today.',
+            ], 422);
+        }
+
+        if (!StoreHoursHelper::isTimeInSchedule($validated['reservation_time'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Time (' . $validated['reservation_time'] . ') is outside schedule (' . StoreHoursHelper::getScheduleText() . ').',
+            ], 422);
+        }
+
+        // 🛑 Check 2: Table Double-Booking Prevention
+        if (!empty($validated['table_id'])) {
+            if ($this->isTableAlreadyReserved($validated['table_id'], $validated['reservation_date'], $validated['reservation_time'])) {
+                $table = Table::find($validated['table_id']);
+                $tableName = $table ? $table->table_number : 'Selected Table';
+
+                return response()->json([
+                    'success' => false,
+                    'message' => "{$tableName} is ALREADY RESERVED on {$validated['reservation_date']} around {$validated['reservation_time']}. Please select another table or time.",
+                ], 422);
+            }
+        }
 
         $reservation = Reservation::create([
             'customer_name'    => $validated['customer_name'],
@@ -164,7 +230,9 @@ class ReservationApiController extends Controller
 
         try {
             event(new ReservationUpdated('created', $reservation));
-        } catch (\Throwable $e) {}
+        } catch (Throwable $e) {
+            Log::warning('WebSocket broadcast for reservation failed: ' . $e->getMessage());
+        }
 
         return response()->json([
             'success'     => true,
@@ -174,7 +242,7 @@ class ReservationApiController extends Controller
     }
 
     /**
-     * Get Reservations By Date for Hostess / POS
+     * 4. Get Reservations By Date for Hostess / POS
      */
     public function getReservationsByDate(Request $request): JsonResponse
     {
@@ -189,7 +257,7 @@ class ReservationApiController extends Controller
     }
 
     /**
-     * Update Reservation Status (seated, completed, cancelled, no_show)
+     * 5. Update Reservation Status
      */
     public function updateStatus(Request $request, Reservation $reservation): JsonResponse
     {
@@ -199,7 +267,7 @@ class ReservationApiController extends Controller
         ]);
 
         $data = ['status' => $validated['status']];
-        if (isset($validated['table_id'])) {
+        if (array_key_exists('table_id', $validated)) {
             $data['table_id'] = $validated['table_id'];
         }
 
@@ -207,7 +275,7 @@ class ReservationApiController extends Controller
 
         try {
             event(new ReservationUpdated('updated', $reservation));
-        } catch (\Throwable $e) {}
+        } catch (Throwable $e) {}
 
         return response()->json([
             'success'     => true,
@@ -217,7 +285,7 @@ class ReservationApiController extends Controller
     }
 
     /**
-     * Get Authenticated Customer's Reservations
+     * 6. Authenticated Customer Reservations
      */
     public function getClientReservations(Request $request): JsonResponse
     {
@@ -235,7 +303,7 @@ class ReservationApiController extends Controller
     }
 
     /**
-     * Customer Cancel Reservation
+     * 7. Customer Cancel Reservation
      */
     public function cancelClientReservation(Request $request, Reservation $reservation): JsonResponse
     {
@@ -252,11 +320,36 @@ class ReservationApiController extends Controller
 
         try {
             event(new ReservationUpdated('cancelled', $reservation));
-        } catch (\Throwable $e) {}
+        } catch (Throwable $e) {}
 
         return response()->json([
             'success' => true,
             'message' => 'Reservation cancelled successfully.',
         ], 200);
+    }
+
+    /**
+     * 🚀 Helper: Checks if a table is already booked within a 90-minute window
+     */
+    private function isTableAlreadyReserved($tableId, $date, $time, $excludeReservationId = null): bool
+    {
+        if (!$tableId) {
+            return false;
+        }
+
+        $bookingTime = Carbon::parse("{$date} {$time}");
+        $windowStart = (clone $bookingTime)->subMinutes(90)->format('H:i:s');
+        $windowEnd   = (clone $bookingTime)->addMinutes(90)->format('H:i:s');
+
+        $query = Reservation::where('table_id', $tableId)
+            ->where('reservation_date', $date)
+            ->whereIn('status', ['confirmed', 'seated'])
+            ->whereBetween('reservation_time', [$windowStart, $windowEnd]);
+
+        if ($excludeReservationId) {
+            $query->where('id', '!=', $excludeReservationId);
+        }
+
+        return $query->exists();
     }
 }

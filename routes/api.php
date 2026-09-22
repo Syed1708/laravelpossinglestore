@@ -100,7 +100,7 @@ Route::prefix('v1')->group(function () {
     });
 
     // Staff / Admin Login
-    Route::prefix('admin')->middleware(['throttle:5,1'])->group(function () {
+    Route::prefix('admin')->group(function () {
         Route::post('/login', [AuthController::class, 'login']);
     });
 
@@ -137,7 +137,7 @@ Route::prefix('v1')->group(function () {
         });
 
         // --- B. WEB POS & REGISTER OPERATIONS ---
-        Route::prefix('pos')->middleware(['throttle:5,1'])->group(function () {
+        Route::prefix('pos')->middleware(['throttle:120,1'])->group(function () {
             Route::post('/orders/sync', [OrderSyncController::class, 'sync']);
 
             // Day Closures (Z-Reports)
@@ -157,7 +157,7 @@ Route::prefix('v1')->group(function () {
         });
 
         // --- C. KITCHEN DISPLAY SYSTEM (KDS) API ---
-        Route::prefix('kds')->middleware(['throttle:5,1'])->group(function () {
+        Route::prefix('kds')->middleware(['throttle:120,1'])->group(function () {
             Route::get('/orders/chef', [KdsApiController::class, 'getChefOrders']);
             Route::get('/orders/packer', [KdsApiController::class, 'getPackerOrders']);
             Route::post('/orders/{order}/status', [KdsApiController::class, 'updateOrderStatus']);

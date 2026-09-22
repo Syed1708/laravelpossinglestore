@@ -16,27 +16,28 @@ class SequenceService
     public function getNextSequenceNumber(string $key = self::ORDER_SEQUENCE_KEY): int
     {
         return DB::transaction(function () use ($key): int {
-            // Pessimistic row lock on the single counter row
-            $counter = DB::table('counters')
-                ->where('key', $key)
-                ->lockForUpdate()
-                ->first();
+            // 1. Ensure counter row exists (idempotent, race-safe)
+            $counter = DB::table('counters')->where('key', $key)->first();
 
-            // Self-healing fallback if counter row does not exist yet
             if (! $counter) {
-                $initialValue = (int) (Order::max('sequence_number') ?? 0) + 1;
+                $initialValue = (int) (Order::max('sequence_number') ?? 0);
 
-                DB::table('counters')->insert([
+                // Insert ignore / catch duplicate in case of simultaneous initial boots
+                DB::table('counters')->insertOrIgnore([
                     'key'        => $key,
                     'value'      => $initialValue,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
-
-                return $initialValue;
             }
 
-            $nextValue = (int) $counter->value + 1;
+            // 2. Pessimistic row lock on the existing counter row
+            $lockedCounter = DB::table('counters')
+                ->where('key', $key)
+                ->lockForUpdate()
+                ->first();
+
+            $nextValue = (int) $lockedCounter->value + 1;
 
             DB::table('counters')
                 ->where('key', $key)
