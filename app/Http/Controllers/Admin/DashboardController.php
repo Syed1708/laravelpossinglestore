@@ -2,32 +2,31 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Helpers\StoreHoursHelper;
 use App\Http\Controllers\Controller;
+use App\Models\Expense;
+use App\Models\Ingredient;
 use App\Models\Order;
 use App\Models\Reservation;
-use App\Models\Ingredient;
-use App\Models\Expense;
 use App\Models\StoreSetting;
-use Carbon\Carbon;
 
 class DashboardController extends Controller
 {
     public function index()
     {
-
-        $today = \App\Helpers\StoreHoursHelper::today();
-        $startOfMonth = \App\Helpers\StoreHoursHelper::now()->startOfMonth();
-        $endOfMonth = \App\Helpers\StoreHoursHelper::now()->endOfMonth();
+        $today = StoreHoursHelper::today();
+        $startOfMonth = StoreHoursHelper::now()->startOfMonth();
+        $endOfMonth = StoreHoursHelper::now()->endOfMonth();
 
         $settings = StoreSetting::getSettings();
-        $currencySymbol = $settings->currency === 'GBP' ? '£' : '€';
+        $currencySymbol = StoreSetting::currencySymbol();
 
         // 1. TODAY'S SALES & ORDERS
         $todayOrders = Order::whereDate('created_at', $today)
             ->whereNotIn('status', ['refunded', 'cancelled'])
             ->get();
 
-        $todayRevenue = $todayOrders->sum('total_incl_vat');
+        $todayRevenue = (float) $todayOrders->sum('total_incl_vat');
         $todayOrderCount = $todayOrders->count();
 
         // Sales Channel Breakdown Today
@@ -56,14 +55,32 @@ class DashboardController extends Controller
             ->get();
 
         // 4. MONTHLY FINANCIAL P&L SUMMARY
-        $monthSalesHt = Order::whereBetween('created_at', [$startOfMonth, $endOfMonth])
+        $monthSalesHt = (float) Order::whereBetween('created_at', [$startOfMonth, $endOfMonth])
             ->whereNotIn('status', ['refunded', 'cancelled'])
             ->sum('subtotal_excl_vat');
 
-        $monthExpenses = Expense::whereBetween('paid_at', [$startOfMonth, $endOfMonth])
+        $monthExpenses = (float) Expense::whereBetween('paid_at', [$startOfMonth, $endOfMonth])
             ->sum('amount');
 
         $monthNetProfit = $monthSalesHt - $monthExpenses;
+
+        // 5. 📊 7-DAY REVENUE TRAJECTORY
+        $trendLabels = [];
+        $trendData   = [];
+
+        for ($i = 6; $i >= 0; $i--) {
+            $date = (clone $today)->subDays($i);
+            $dayRevenue = Order::whereDate('created_at', $date)
+                ->whereNotIn('status', ['refunded', 'cancelled'])
+                ->sum('total_incl_vat');
+
+            $trendLabels[] = $date->format('D, d M'); // e.g. "Mon, 21 Sep"
+            $trendData[]   = round((float) $dayRevenue, 2);
+        }
+
+        // 6. 📊 SALES CHANNELS DISTRIBUTION
+        $channelLabels = ['Dine-In', 'Takeaway', 'Online'];
+        $channelData   = [$dineInCount, $takeawayCount, $onlineCount];
 
         return view('admin.dashboard', compact(
             'currencySymbol',
@@ -78,7 +95,11 @@ class DashboardController extends Controller
             'lowStockIngredients',
             'monthSalesHt',
             'monthExpenses',
-            'monthNetProfit'
+            'monthNetProfit',
+            'trendLabels',
+            'trendData',
+            'channelLabels',
+            'channelData'
         ));
     }
 }

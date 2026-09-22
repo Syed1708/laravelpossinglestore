@@ -109,7 +109,7 @@ function renderOrders(orders) {
                 <p class="text-slate-500 font-medium">No active online orders at the moment.</p>
             </div>
         `;
-        return;
+        return; 
     }
 
     grid.innerHTML = orders.map(order => {
