@@ -18,13 +18,20 @@ class OrderItem extends Model
         'item_status',
         'notes', // 🚀 Added
     ];
-    protected $casts = [
-        'unit_price' => 'decimal:2',
-        'vat_rate' => 'decimal:2',
-        'subtotal' => 'decimal:2',
-        'notes' => 'array',
-    ];
 
+    /**
+     * 🚀 Laravel 12 Standard Casts
+     */
+    protected function casts(): array
+    {
+        return [
+            'quantity'   => 'integer',
+            'unit_price' => 'decimal:2',
+            'vat_rate'   => 'decimal:2',
+            'subtotal'   => 'decimal:2',
+            'notes'      => 'array',
+        ];
+    }
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class);

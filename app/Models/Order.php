@@ -43,9 +43,24 @@ class Order extends Model
         'status',
     ];
 
-    protected $casts = [
-        'completed_at' => 'datetime',
-    ];
+    /**
+     * 🚀 Laravel 12 Standard: Dynamic method-based model casts
+     */
+    protected function casts(): array
+    {
+        return [
+            'sequence_number'     => 'integer',
+            'points_redeemed'     => 'integer',
+            'points_earned'       => 'integer',
+            'estimated_prep_time' => 'integer',
+            'subtotal_excl_vat'   => 'decimal:2',
+            'vat_amount'          => 'decimal:2',
+            'total_incl_vat'      => 'decimal:2',
+            'discount_amount'     => 'decimal:2',
+            'completed_at'        => 'datetime',
+            'estimated_ready_at'  => 'datetime',
+        ];
+    }
 
 
         /**
