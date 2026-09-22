@@ -11,6 +11,7 @@ use App\Services\Inventory\StockService;
 use App\Services\Orders\SequenceService;
 use App\Events\KdsOrderUpdated;
 use App\Helpers\StoreHoursHelper;
+use App\Http\Requests\StoreKioskOrderRequest;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -30,7 +31,7 @@ class KioskOrderController extends Controller
     /**
      * Store new order from in-store self-service touchscreen kiosk
      */
-    public function storeKioskOrder(Request $request): JsonResponse
+    public function storeKioskOrder(StoreKioskOrderRequest $request): JsonResponse
     {
         if (!StoreHoursHelper::isOpen()) {
             return response()->json([
@@ -39,17 +40,8 @@ class KioskOrderController extends Controller
             ], 403);
         }
 
-        $validated = $request->validate([
-            'cart'              => 'required|array|min:1',
-            'cart.*.id'         => 'required|exists:products,id',
-            'cart.*.quantity'   => 'required|integer|min:1',
-            'cart.*.notes'      => 'nullable|array',
-            'cart.*.extraPrice' => 'nullable|numeric|min:0',
-            'order_type'        => 'required|in:kiosk_eat_in,kiosk_takeaway,dine_in,takeaway',
-            'payment_choice'    => 'required|in:pay_at_counter,card_terminal',
-            'customer_name'     => 'nullable|string|max:100',
-            'customer_phone'    => 'nullable|string|max:50',
-        ]);
+        $validated = $request->validated();
+
 
         $isCardPaid = $validated['payment_choice'] === 'card_terminal';
 

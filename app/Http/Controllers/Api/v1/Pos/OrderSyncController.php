@@ -2,19 +2,18 @@
 
 namespace App\Http\Controllers\Api\v1\Pos;
 
+use App\Events\KdsOrderUpdated;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\SyncOrdersRequest;
 use App\Models\Order;
 use App\Services\Fiscal\FiscalLedgerService;
 use App\Services\Inventory\StockService;
-use App\Services\Orders\SequenceService;
 use App\Services\LoyaltyService;
-use App\Events\KdsOrderUpdated;
-use Illuminate\Http\Request;
+use App\Services\Orders\SequenceService;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Validator;
-use Carbon\Carbon;
 use Throwable;
 
 class OrderSyncController extends Controller
@@ -29,49 +28,21 @@ class OrderSyncController extends Controller
      * Synchronize bulk orders from Web POS & Expo Mobile App.
      * Handles gapless sequential numbering, NF525 cryptographic hashing, and safe inventory deductions.
      */
-    public function sync(Request $request): JsonResponse
+    public function sync(SyncOrdersRequest $request): JsonResponse
     {
         $user = $request->user();
-
-        // 1. Validate payload structure
-        $validator = Validator::make($request->all(), [
-            'orders'                        => 'required|array|min:1',
-            'orders.*.uuid'                 => 'required|uuid',
-            'orders.*.subtotal_excl_vat'    => 'required|numeric',
-            'orders.*.vat_amount'           => 'required|numeric',
-            'orders.*.total_incl_vat'       => 'required|numeric',
-            'orders.*.completed_at'         => 'required|date',
-            'orders.*.order_type'           => 'nullable|string|in:dine_in,takeaway,click_and_collect,delivery',
-            'orders.*.client_id'            => 'nullable|exists:clients,id',
-            'orders.*.customer_name'        => 'nullable|string|max:100',
-            'orders.*.customer_phone'       => 'nullable|string|max:50',
-            'orders.*.items'                => 'required|array|min:1',
-            'orders.*.items.*.product_id'   => 'nullable|exists:products,id',
-            'orders.*.items.*.product_name' => 'required|string|max:255',
-            'orders.*.items.*.quantity'     => 'required|integer|min:1',
-            'orders.*.items.*.unit_price'   => 'required|numeric|min:0',
-            'orders.*.items.*.vat_rate'     => 'required|numeric',
-            'orders.*.items.*.subtotal'     => 'required|numeric|min:0',
-            'orders.*.items.*.notes'        => 'nullable|array',
-            'orders.*.payments'             => 'required|array|min:1',
-            'orders.*.payments.*.amount'    => 'required|numeric|min:0',
-            'orders.*.payments.*.method'    => 'required|string|max:50',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'error'   => 'Validation failed',
-                'details' => $validator->errors(),
-            ], 422);
-        }
 
         $syncedUuids   = [];
         $failedUuids   = [];
         $createdOrders = [];
 
+        // 1. Sort orders chronologically so offline batches are chained in correct time sequence
+        $ordersToProcess = collect($request->validated()['orders'])->sortBy(function ($order) {
+            return Carbon::parse($order['completed_at'])->timestamp;
+        })->values()->all();
+
         // 2. Process each order inside an isolated atomic transaction
-        foreach ($request->orders as $orderData) {
+        foreach ($ordersToProcess as $orderData) {
             DB::beginTransaction();
             try {
                 // 🚀 IDEMPOTENCY CHECK: Prevent duplicate order processing
