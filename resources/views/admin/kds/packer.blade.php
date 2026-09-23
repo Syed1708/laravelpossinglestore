@@ -517,7 +517,13 @@
     </div>
 
     <script>
-        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        // 🚀 1. IMMEDIATE FETCH FIRST (NEVER BLANK ON LOAD)
+        fetchPackerOrders();
+        document.addEventListener('DOMContentLoaded', fetchPackerOrders);
+
+        // Safe Selectors
+        const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+        const csrfToken = csrfMeta ? csrfMeta.getAttribute('content') : '{{ csrf_token() }}';
         const workspace = document.getElementById('kds-workspace');
         const wsDot = document.getElementById('ws-dot');
         const wsText = document.getElementById('ws-text');
@@ -534,16 +540,18 @@
         function initTheme() {
             const savedTheme = localStorage.getItem('kds_theme') || 'dark';
             document.documentElement.setAttribute('data-theme', savedTheme);
-            themeBtn.innerHTML = savedTheme === 'dark' ? '🌙 Dark' : '☀️ Light';
+            if (themeBtn) themeBtn.innerHTML = savedTheme === 'dark' ? '🌙 Dark' : '☀️ Light';
         }
         function toggleKdsTheme() {
-            const current = document.documentElement.getAttribute('data-theme');
+            const current = document.documentElement.getAttribute('data-theme') || 'dark';
             const next = current === 'dark' ? 'light' : 'dark';
             document.documentElement.setAttribute('data-theme', next);
             localStorage.setItem('kds_theme', next);
-            themeBtn.innerHTML = next === 'dark' ? '🌙 Dark' : '☀️ Light';
+            if (themeBtn) themeBtn.innerHTML = next === 'dark' ? '🌙 Dark' : '☀️ Light';
         }
-        function toggleSidebar() { layoutEl.classList.toggle('sidebar-collapsed'); }
+        function toggleSidebar() { 
+            if (layoutEl) layoutEl.classList.toggle('sidebar-collapsed'); 
+        }
         initTheme();
 
         function unlockAudio() {
@@ -552,8 +560,10 @@
                 if (!audioCtx) audioCtx = new AudioContext();
                 audioCtx.resume().then(() => {
                     isAudioUnlocked = true;
-                    audioBadge.innerHTML = '🔊 Sound On';
-                    audioBadge.style.color = 'var(--success)';
+                    if (audioBadge) {
+                        audioBadge.innerHTML = '🔊 Sound On';
+                        audioBadge.style.color = 'var(--success)';
+                    }
                     playKitchenAlert();
                 });
             } catch (e) {}
@@ -578,14 +588,16 @@
         }
 
         function toggleFullScreen() {
-            if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {});
-            else document.exitFullscreen().catch(() => {});
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(() => {});
+            } else {
+                document.exitFullscreen().catch(() => {});
+            }
         }
 
-        // --- FETCH PACKER ORDERS ---
         async function fetchPackerOrders() {
             try {
-                const response = await fetch("{{ route('admin.kds.orders.packer') }}");
+                const response = await fetch("{{ route('admin.kds.orders.packer', [], false) }}");
                 if (!response.ok) return;
                 const orders = await response.json();
                 activeOrdersList = orders;
@@ -609,7 +621,6 @@
             renderKdsWorkspace();
         }
 
-        // --- OPTIMISTIC ITEM TOGGLE & INSTANT COMPLETE BUTTON UNLOCK ---
         async function toggleItemCheckbox(itemId, orderId) {
             const row = document.getElementById(`item-row-${itemId}`);
             if (row) {
@@ -626,7 +637,6 @@
                 const item = order.items.find(i => i.id === itemId);
                 if (item) item.item_status = (item.item_status === 'done') ? 'pending' : 'done';
                 updateSidebarAndBadges();
-                // 🚀 INSTANT BUTTON UNLOCK (NO REFRESH NEEDED)
                 checkCompletionButton(orderId);
             }
 
@@ -640,7 +650,6 @@
             }
         }
 
-        // 🚀 DYNAMIC COMPLETE BUTTON UNLOCK CHECKER
         function checkCompletionButton(orderId) {
             const order = activeOrdersList.find(o => o.id === orderId);
             if (!order) return;
@@ -663,20 +672,33 @@
         }
 
         async function completeOrder(orderId) {
+            const card = document.getElementById(`card-${orderId}`);
+            if (card) {
+                card.style.transition = 'all 0.22s cubic-bezier(0.4, 0, 0.2, 1)';
+                card.style.transform = 'scale(0.8) translateY(-20px)';
+                card.style.opacity = '0';
+                card.style.pointerEvents = 'none';
+            }
+
+            activeOrdersList = activeOrdersList.filter(o => o.id !== orderId);
+            setTimeout(() => {
+                renderKdsWorkspace();
+                updateSidebarAndBadges();
+            }, 220);
+
             try {
                 await fetch(`/api/kds/orders/${orderId}/status`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
                     body: JSON.stringify({ status: 'delivered' })
                 });
-                fetchPackerOrders();
             } catch (error) {
-                console.error('[KDS Packer] Order completion failed:', error);
+                fetchPackerOrders();
             }
         }
 
-        // --- RENDER WORKSPACE ---
         function renderKdsWorkspace() {
+            if (!workspace) return;
             const currentScroll = workspace.scrollLeft;
 
             const filteredOrders = activeOrdersList.filter(order => {
@@ -805,7 +827,6 @@
             updateAllClocks();
         }
 
-        // --- SIDEBAR METRICS ---
         function updateSidebarAndBadges() {
             let readyCount = 0;
             let kitchenCount = 0;
@@ -834,35 +855,35 @@
                 });
             });
 
-            document.getElementById('badge-count-all').innerText = activeOrdersList.length;
-            document.getElementById('badge-count-ready').innerText = readyCount;
-            document.getElementById('badge-count-kitchen').innerText = kitchenCount;
-            document.getElementById('badge-count-direct').innerText = directCount;
-            document.getElementById('badge-count-urgent').innerText = urgentCount;
-
-            document.getElementById('stat-active').innerText = activeOrdersList.length;
-            document.getElementById('stat-ready').innerText = readyCount;
-            document.getElementById('stat-kitchen').innerText = kitchenCount;
-            document.getElementById('stat-urgent').innerText = urgentCount;
+            const setTxt = (id, val) => { const el = document.getElementById(id); if (el) el.innerText = val; };
+            setTxt('badge-count-all', activeOrdersList.length);
+            setTxt('badge-count-ready', readyCount);
+            setTxt('badge-count-kitchen', kitchenCount);
+            setTxt('badge-count-direct', directCount);
+            setTxt('badge-count-urgent', urgentCount);
+            setTxt('stat-active', activeOrdersList.length);
+            setTxt('stat-ready', readyCount);
+            setTxt('stat-kitchen', kitchenCount);
+            setTxt('stat-urgent', urgentCount);
 
             const batchContainer = document.getElementById('batch-items-list');
-            const items = Object.entries(batchCounts);
-
-            if (items.length === 0) {
-                batchContainer.innerHTML = `<div style="text-align: center; color: var(--text-muted); font-size: 12px; padding: 20px 0;">All items bagged and ready!</div>`;
-            } else {
-                batchContainer.innerHTML = items
-                    .sort((a, b) => b[1] - a[1])
-                    .map(([name, qty]) => `
-                        <div class="batch-item-row">
-                            <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px;">${name}</span>
-                            <span class="batch-item-qty">${qty}x</span>
-                        </div>
-                    `).join('');
+            if (batchContainer) {
+                const items = Object.entries(batchCounts);
+                if (items.length === 0) {
+                    batchContainer.innerHTML = `<div style="text-align: center; color: var(--text-muted); font-size: 12px; padding: 20px 0;">All items bagged and ready!</div>`;
+                } else {
+                    batchContainer.innerHTML = items
+                        .sort((a, b) => b[1] - a[1])
+                        .map(([name, qty]) => `
+                            <div class="batch-item-row">
+                                <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px;">${name}</span>
+                                <span class="batch-item-qty">${qty}x</span>
+                            </div>
+                        `).join('');
+                }
             }
         }
 
-        // --- SAFE ISO-8601 TIMERS ---
         function getElapsedMilliseconds(dateStr) {
             if (!dateStr) return 0;
             let s = String(dateStr).trim();
@@ -874,7 +895,8 @@
         }
 
         function updateAllClocks() {
-            document.getElementById('sidebar-time').innerText = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const timeEl = document.getElementById('sidebar-time');
+            if (timeEl) timeEl.innerText = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
             const clocks = document.querySelectorAll('.kds-timer-clock');
             clocks.forEach(clock => {
@@ -903,51 +925,55 @@
             });
         }
 
-        // --- REVERB WEBSOCKET LISTENER + BACKGROUND AUTO-POLL FALLBACK ---
-        try {
-            const reverbKey = "{{ config('broadcasting.connections.reverb.key') ?? env('REVERB_APP_KEY') }}";
-            const reverbHost = "{{ config('broadcasting.connections.reverb.options.host') ?? env('REVERB_HOST', '127.0.0.1') }}";
-            const reverbPort = {{ config('broadcasting.connections.reverb.options.port') ?? env('REVERB_PORT', 8080) }};
-            const reverbScheme = "{{ config('broadcasting.connections.reverb.options.scheme') ?? env('REVERB_SCHEME', 'http') }}";
+        function initPackerWebSockets() {
+            try {
+                if (typeof Pusher === 'undefined') return;
 
-            const pusher = new Pusher(reverbKey, {
-                wsHost: reverbHost,
-                wsPort: reverbPort,
-                wssPort: reverbPort,
-                forceTLS: reverbScheme === 'https',
-                disableStats: true,
-                enabledTransports: ['ws', 'wss']
-            });
+                const reverbKey = "{{ config('broadcasting.connections.reverb.key') ?? env('REVERB_APP_KEY') }}";
+                if (!reverbKey) return;
 
-            const channel = pusher.subscribe('kds-channel');
+                const reverbHost = window.location.hostname;
 
-            function handleLiveEvent(data) {
-                if (data && data.message === 'new_orders_synced') playKitchenAlert();
-                fetchPackerOrders();
+                const reverbPort = {{ config('broadcasting.connections.reverb.options.port') ?? env('REVERB_PORT', 8080) }};
+                const reverbScheme = "{{ config('broadcasting.connections.reverb.options.scheme') ?? env('REVERB_SCHEME', 'http') }}";
+
+                const pusher = new Pusher(reverbKey, {
+                    wsHost: reverbHost,
+                    wsPort: reverbPort,
+                    wssPort: reverbPort,
+                    forceTLS: false,
+                    disableStats: true,
+                    enabledTransports: ['ws', 'wss'],
+                    cluster: 'mt1',
+                });
+
+                const channel = pusher.subscribe('kds-channel');
+                const onLiveEvent = (data) => {
+                    if (data && data.message === 'new_orders_synced') playKitchenAlert();
+                    fetchPackerOrders();
+                };
+
+                channel.bind('order-event', onLiveEvent);
+                channel.bind('.order-event', onLiveEvent);
+
+                pusher.connection.bind('state_change', function(states) {
+                    if (wsDot && wsText) {
+                        if (states.current === 'connected') {
+                            wsDot.style.backgroundColor = 'var(--success)';
+                            wsText.textContent = 'Connected';
+                        } else {
+                            wsDot.style.backgroundColor = 'var(--destructive)';
+                            wsText.textContent = 'Reconnecting';
+                        }
+                    }
+                });
+            } catch (err) {
+                console.warn('[KDS WebSocket] Init warning:', err);
             }
-
-            channel.bind('order-event', handleLiveEvent);
-            channel.bind('.order-event', handleLiveEvent);
-
-            pusher.connection.bind('state_change', function(states) {
-                if (states.current === 'connected') {
-                    wsDot.style.backgroundColor = 'var(--success)';
-                    wsText.textContent = 'Connected';
-                } else {
-                    wsDot.style.backgroundColor = 'var(--destructive)';
-                    wsText.textContent = 'Live Reconnecting';
-                }
-            });
-        } catch (e) {
-            console.warn('[KDS WebSocket] Reverb error, relying on auto-poll:', e);
         }
 
-        // 🚀 IMMEDIATE INVOCATION
-        fetchPackerOrders();
+        initPackerWebSockets();
         setInterval(updateAllClocks, 1000);
-
-        // 🚀 REAL-TIME AUTO-POLL FALLBACK (EVERY 6 SECONDS)
-        setInterval(fetchPackerOrders, 6000);
     </script>
 </body>
 

@@ -168,6 +168,7 @@
         .kds-main-layout.sidebar-collapsed {
             grid-template-columns: 1fr 0px;
         }
+
         .kds-main-layout.sidebar-collapsed .kds-sidebar {
             display: none;
         }
@@ -181,7 +182,10 @@
             scroll-behavior: smooth;
         }
 
-        .kds-grid::-webkit-scrollbar { height: 10px; }
+        .kds-grid::-webkit-scrollbar {
+            height: 10px;
+        }
+
         .kds-grid::-webkit-scrollbar-thumb {
             background: var(--border);
             border-radius: 5px;
@@ -242,8 +246,18 @@
             border-radius: 6px;
             text-transform: uppercase;
         }
-        .badge-takeaway { background: rgba(139, 92, 246, 0.15); color: #8b5cf6; border: 1px solid rgba(139, 92, 246, 0.3); }
-        .badge-dinein { background: rgba(59, 130, 246, 0.15); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.3); }
+
+        .badge-takeaway {
+            background: rgba(139, 92, 246, 0.15);
+            color: #8b5cf6;
+            border: 1px solid rgba(139, 92, 246, 0.3);
+        }
+
+        .badge-dinein {
+            background: rgba(59, 130, 246, 0.15);
+            color: #3b82f6;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
 
         .kds-timer {
             font-size: 13px;
@@ -252,9 +266,21 @@
             padding: 2px 6px;
             border-radius: 4px;
         }
-        .timer-normal { color: var(--success); }
-        .timer-warning { color: var(--warning); background: rgba(245, 158, 11, 0.12); }
-        .timer-urgent { color: var(--destructive); background: rgba(239, 68, 68, 0.15); font-weight: 900; }
+
+        .timer-normal {
+            color: var(--success);
+        }
+
+        .timer-warning {
+            color: var(--warning);
+            background: rgba(245, 158, 11, 0.12);
+        }
+
+        .timer-urgent {
+            color: var(--destructive);
+            background: rgba(239, 68, 68, 0.15);
+            font-weight: 900;
+        }
 
         .kds-card-body {
             padding: 12px 14px;
@@ -327,9 +353,20 @@
             cursor: pointer;
             transition: all 0.2s ease;
         }
-        .kds-btn:active { transform: scale(0.98); }
-        .kds-btn-start { background-color: var(--warning); color: #111827; }
-        .kds-btn-ready { background-color: var(--success); color: #111827; }
+
+        .kds-btn:active {
+            transform: scale(0.98);
+        }
+
+        .kds-btn-start {
+            background-color: var(--warning);
+            color: #111827;
+        }
+
+        .kds-btn-ready {
+            background-color: var(--success);
+            color: #111827;
+        }
 
         .kds-sidebar {
             background-color: var(--card-bg);
@@ -372,8 +409,17 @@
             flex-direction: column;
         }
 
-        .kds-stat-label { font-size: 11px; font-weight: 800; color: var(--text-muted); }
-        .kds-stat-val { font-size: 22px; font-weight: 900; margin-top: 2px; }
+        .kds-stat-label {
+            font-size: 11px;
+            font-weight: 800;
+            color: var(--text-muted);
+        }
+
+        .kds-stat-val {
+            font-size: 22px;
+            font-weight: 900;
+            margin-top: 2px;
+        }
 
         .batch-items-container {
             display: flex;
@@ -431,19 +477,22 @@
                     🍳 Cooking <span id="badge-count-cooking" style="font-weight: 900;">0</span>
                 </button>
                 <button class="filter-btn" data-filter="urgent" onclick="setKdsFilter('urgent')">
-                    🚨 Urgent <span id="badge-count-urgent" style="font-weight: 900; color: var(--destructive);">0</span>
+                    🚨 Urgent <span id="badge-count-urgent"
+                        style="font-weight: 900; color: var(--destructive);">0</span>
                 </button>
             </div>
         </div>
 
         <div class="header-actions">
-            <input type="text" id="kds-search" class="kds-search-input" placeholder="🔍 Search Ticket..." oninput="handleSearch(this.value)">
+            <input type="text" id="kds-search" class="kds-search-input" placeholder="🔍 Search Ticket..."
+                oninput="handleSearch(this.value)">
             <button class="btn-action" id="theme-btn" onclick="toggleKdsTheme()">🌙 Dark</button>
             <button class="btn-action" onclick="toggleSidebar()">📊 Sidebar</button>
             <button class="btn-action" id="audio-btn" onclick="unlockAudio()">🔔 Audio</button>
             <button class="btn-action" onclick="toggleFullScreen()">⛶ Screen</button>
             <div class="kds-status" id="ws-status">
-                <span id="ws-dot" style="height: 9px; width: 9px; background-color: var(--success); border-radius: 50%; display: inline-block;"></span>
+                <span id="ws-dot"
+                    style="height: 9px; width: 9px; background-color: var(--success); border-radius: 50%; display: inline-block;"></span>
                 <span id="ws-text">Connected</span>
             </div>
         </div>
@@ -491,7 +540,8 @@
             </div>
 
             <div>
-                <button onclick="fetchChefOrders()" class="btn-action" style="width: 100%; padding: 10px; justify-content: center; font-weight: 800;">
+                <button onclick="fetchChefOrders()" class="btn-action"
+                    style="width: 100%; padding: 10px; justify-content: center; font-weight: 800;">
                     🔄 Refresh Orders
                 </button>
             </div>
@@ -499,7 +549,13 @@
     </div>
 
     <script>
-        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        // 🚀 1. IMMEDIATE FETCH FIRST (NEVER BLANK ON LOAD)
+        fetchChefOrders();
+        document.addEventListener('DOMContentLoaded', fetchChefOrders);
+
+        // Safe Selectors
+        const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+        const csrfToken = csrfMeta ? csrfMeta.getAttribute('content') : '{{ csrf_token() }}';
         const workspace = document.getElementById('kds-workspace');
         const wsDot = document.getElementById('ws-dot');
         const wsText = document.getElementById('ws-text');
@@ -513,21 +569,23 @@
         let audioCtx = null;
         let isAudioUnlocked = false;
 
-        // --- 1. THEME SWITCHER ---
+        // --- 1. SAFE THEME SWITCHER ---
         function initTheme() {
             const savedTheme = localStorage.getItem('kds_theme') || 'dark';
             document.documentElement.setAttribute('data-theme', savedTheme);
-            themeBtn.innerHTML = savedTheme === 'dark' ? '🌙 Dark' : '☀️ Light';
+            if (themeBtn) themeBtn.innerHTML = savedTheme === 'dark' ? '🌙 Dark' : '☀️ Light';
         }
+
         function toggleKdsTheme() {
-            const current = document.documentElement.getAttribute('data-theme');
+            const current = document.documentElement.getAttribute('data-theme') || 'dark';
             const next = current === 'dark' ? 'light' : 'dark';
             document.documentElement.setAttribute('data-theme', next);
             localStorage.setItem('kds_theme', next);
-            themeBtn.innerHTML = next === 'dark' ? '🌙 Dark' : '☀️ Light';
+            if (themeBtn) themeBtn.innerHTML = next === 'dark' ? '🌙 Dark' : '☀️ Light';
         }
+
         function toggleSidebar() {
-            layoutEl.classList.toggle('sidebar-collapsed');
+            if (layoutEl) layoutEl.classList.toggle('sidebar-collapsed');
         }
         initTheme();
 
@@ -538,13 +596,19 @@
                 if (!audioCtx) audioCtx = new AudioContext();
                 audioCtx.resume().then(() => {
                     isAudioUnlocked = true;
-                    audioBadge.innerHTML = '🔊 Sound On';
-                    audioBadge.style.color = 'var(--success)';
+                    if (audioBadge) {
+                        audioBadge.innerHTML = '🔊 Sound On';
+                        audioBadge.style.color = 'var(--success)';
+                    }
                     playKitchenAlert();
                 });
             } catch (e) {}
         }
-        document.body.addEventListener('click', () => { if (!isAudioUnlocked) unlockAudio(); }, { once: true });
+        document.body.addEventListener('click', () => {
+            if (!isAudioUnlocked) unlockAudio();
+        }, {
+            once: true
+        });
 
         function playKitchenAlert() {
             if (!audioCtx) return;
@@ -553,6 +617,7 @@
                 playTone(1046.50, 0.14, 0.10);
             } catch (err) {}
         }
+
         function playTone(freq, dur, delay) {
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
@@ -577,7 +642,7 @@
         // --- 3. FETCH CHEF ORDERS ---
         async function fetchChefOrders() {
             try {
-                const response = await fetch("{{ route('admin.kds.orders.chef') }}");
+                const response = await fetch("{{ route('admin.kds.orders.chef', [], false) }}");
                 if (!response.ok) return;
                 const orders = await response.json();
                 activeOrdersList = orders;
@@ -601,7 +666,7 @@
             renderKdsWorkspace();
         }
 
-        // --- 4. OPTIMISTIC ITEM TOGGLE & INSTANT BUTTON UNLOCK ---
+        // --- 4. OPTIMISTIC ITEM TOGGLE & BUTTON UNLOCK ---
         async function toggleItemCheckbox(itemId, orderId) {
             const row = document.getElementById(`item-row-${itemId}`);
             if (row) {
@@ -613,27 +678,27 @@
                 }
             }
 
-            // Update in-memory state
             const order = activeOrdersList.find(o => o.id === orderId);
             if (order) {
                 const item = order.items.find(i => i.id === itemId);
                 if (item) item.item_status = (item.item_status === 'done') ? 'pending' : 'done';
                 updateSidebarAndBadges();
-                // 🚀 INSTANT BUTTON UNLOCK (NO REFRESH NEEDED)
                 checkReadyButton(orderId);
             }
 
             try {
                 await fetch(`/api/kds/items/${itemId}/toggle`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken }
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken
+                    }
                 });
             } catch (error) {
                 fetchChefOrders();
             }
         }
 
-        // 🚀 DYNAMIC READY BUTTON UNLOCK CHECKER
         function checkReadyButton(orderId) {
             const card = document.getElementById(`card-${orderId}`);
             if (!card) return;
@@ -650,20 +715,47 @@
         }
 
         async function updateOrderStatus(orderId, newStatus) {
+            if (newStatus === 'ready') {
+                const card = document.getElementById(`card-${orderId}`);
+                if (card) {
+                    card.style.transition = 'all 0.22s cubic-bezier(0.4, 0, 0.2, 1)';
+                    card.style.transform = 'scale(0.8) translateY(-20px)';
+                    card.style.opacity = '0';
+                    card.style.pointerEvents = 'none';
+                }
+                activeOrdersList = activeOrdersList.filter(o => o.id !== orderId);
+                setTimeout(() => {
+                    renderKdsWorkspace();
+                    updateSidebarAndBadges();
+                }, 220);
+            } else if (newStatus === 'preparing') {
+                const order = activeOrdersList.find(o => o.id === orderId);
+                if (order) {
+                    order.preparation_status = 'preparing';
+                    renderKdsWorkspace();
+                    updateSidebarAndBadges();
+                }
+            }
+
             try {
                 await fetch(`/api/kds/orders/${orderId}/status`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
-                    body: JSON.stringify({ status: newStatus })
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken
+                    },
+                    body: JSON.stringify({
+                        status: newStatus
+                    })
                 });
-                fetchChefOrders();
             } catch (error) {
-                console.error('[KDS Chef] Status update failed:', error);
+                fetchChefOrders();
             }
         }
 
         // --- 5. RENDER TICKETS ---
         function renderKdsWorkspace() {
+            if (!workspace) return;
             const currentScroll = workspace.scrollLeft;
 
             const filteredOrders = activeOrdersList.filter(order => {
@@ -705,16 +797,22 @@
 
                 const itemsHtml = order.items.map(item => {
                     const rawName = item.product_name || 'Item';
-                    const cleanName = rawName.includes('[') ? rawName.substring(0, rawName.indexOf('[')).trim() : rawName;
+                    const cleanName = rawName.includes('[') ? rawName.substring(0, rawName.indexOf('['))
+                        .trim() : rawName;
 
                     let formattedNotes = null;
                     if (item.notes) {
                         if (Array.isArray(item.notes)) formattedNotes = item.notes.join(' | ');
                         else if (typeof item.notes === 'string') {
-                            try { formattedNotes = JSON.parse(item.notes).join(' | '); } catch(e) { formattedNotes = item.notes; }
+                            try {
+                                formattedNotes = JSON.parse(item.notes).join(' | ');
+                            } catch (e) {
+                                formattedNotes = item.notes;
+                            }
                         }
                     } else if (rawName.includes('[') && rawName.includes(']')) {
-                        formattedNotes = rawName.substring(rawName.indexOf('[') + 1, rawName.lastIndexOf(']'));
+                        formattedNotes = rawName.substring(rawName.indexOf('[') + 1, rawName.lastIndexOf(
+                            ']'));
                     }
 
                     const isDone = item.item_status === 'done';
@@ -734,7 +832,8 @@
 
                 let footerBtn = '';
                 if (order.preparation_status === 'pending' || order.preparation_status === 'accepted') {
-                    footerBtn = `<button class="kds-btn kds-btn-start" onclick="updateOrderStatus(${order.id}, 'preparing')">🔥 Start Cooking</button>`;
+                    footerBtn =
+                        `<button class="kds-btn kds-btn-start" onclick="updateOrderStatus(${order.id}, 'preparing')">🔥 Start Cooking</button>`;
                 } else if (order.preparation_status === 'preparing') {
                     footerBtn = `
                         <button class="kds-btn kds-btn-ready" 
@@ -795,36 +894,43 @@
                 order.items.forEach(item => {
                     if (item.item_status !== 'done') {
                         const rawName = item.product_name || 'Item';
-                        const cleanName = rawName.includes('[') ? rawName.substring(0, rawName.indexOf('[')).trim() : rawName;
-                        batchCounts[cleanName] = (batchCounts[cleanName] || 0) + (parseInt(item.quantity) || 1);
+                        const cleanName = rawName.includes('[') ? rawName.substring(0, rawName.indexOf('['))
+                            .trim() : rawName;
+                        batchCounts[cleanName] = (batchCounts[cleanName] || 0) + (parseInt(item.quantity) ||
+                            1);
                     }
                 });
             });
 
-            document.getElementById('badge-count-all').innerText = activeOrdersList.length;
-            document.getElementById('badge-count-pending').innerText = pendingCount;
-            document.getElementById('badge-count-cooking').innerText = cookingCount;
-            document.getElementById('badge-count-urgent').innerText = urgentCount;
-
-            document.getElementById('stat-active').innerText = activeOrdersList.length;
-            document.getElementById('stat-urgent').innerText = urgentCount;
-            document.getElementById('stat-dinein').innerText = dineInCount;
-            document.getElementById('stat-takeaway').innerText = takeawayCount;
+            const setTxt = (id, val) => {
+                const el = document.getElementById(id);
+                if (el) el.innerText = val;
+            };
+            setTxt('badge-count-all', activeOrdersList.length);
+            setTxt('badge-count-pending', pendingCount);
+            setTxt('badge-count-cooking', cookingCount);
+            setTxt('badge-count-urgent', urgentCount);
+            setTxt('stat-active', activeOrdersList.length);
+            setTxt('stat-urgent', urgentCount);
+            setTxt('stat-dinein', dineInCount);
+            setTxt('stat-takeaway', takeawayCount);
 
             const batchContainer = document.getElementById('batch-items-list');
-            const items = Object.entries(batchCounts);
-
-            if (items.length === 0) {
-                batchContainer.innerHTML = `<div style="text-align: center; color: var(--text-muted); font-size: 12px; padding: 20px 0;">All items cooked!</div>`;
-            } else {
-                batchContainer.innerHTML = items
-                    .sort((a, b) => b[1] - a[1])
-                    .map(([name, qty]) => `
-                        <div class="batch-item-row">
-                            <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px;">${name}</span>
-                            <span class="batch-item-qty">${qty}x</span>
-                        </div>
-                    `).join('');
+            if (batchContainer) {
+                const items = Object.entries(batchCounts);
+                if (items.length === 0) {
+                    batchContainer.innerHTML =
+                        `<div style="text-align: center; color: var(--text-muted); font-size: 12px; padding: 20px 0;">All items cooked!</div>`;
+                } else {
+                    batchContainer.innerHTML = items
+                        .sort((a, b) => b[1] - a[1])
+                        .map(([name, qty]) => `
+                            <div class="batch-item-row">
+                                <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px;">${name}</span>
+                                <span class="batch-item-qty">${qty}x</span>
+                            </div>
+                        `).join('');
+                }
             }
         }
 
@@ -832,7 +938,6 @@
         function getElapsedMilliseconds(dateStr) {
             if (!dateStr) return 0;
             let s = String(dateStr).trim();
-            // Normalize "YYYY-MM-DD HH:MM:SS" to ISO "YYYY-MM-DDTHH:MM:SSZ"
             if (s.length === 19 && s.indexOf(' ') === 10) s = s.replace(' ', 'T') + 'Z';
             else if (!s.endsWith('Z') && !s.includes('+')) s += 'Z';
             const parsed = new Date(s);
@@ -841,7 +946,12 @@
         }
 
         function updateAllClocks() {
-            document.getElementById('sidebar-time').innerText = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const timeEl = document.getElementById('sidebar-time');
+            if (timeEl) timeEl.innerText = new Date().toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
 
             const clocks = document.querySelectorAll('.kds-timer-clock');
             clocks.forEach(clock => {
@@ -872,52 +982,62 @@
             });
         }
 
-        // --- 8. REVERB WEBSOCKET LISTENER + BACKGROUND AUTO-POLL FALLBACK ---
-        try {
-            const reverbKey = "{{ config('broadcasting.connections.reverb.key') ?? env('REVERB_APP_KEY') }}";
-            const reverbHost = "{{ config('broadcasting.connections.reverb.options.host') ?? env('REVERB_HOST', '127.0.0.1') }}";
-            const reverbPort = {{ config('broadcasting.connections.reverb.options.port') ?? env('REVERB_PORT', 8080) }};
-            const reverbScheme = "{{ config('broadcasting.connections.reverb.options.scheme') ?? env('REVERB_SCHEME', 'http') }}";
+        // --- 8. SAFE WEBSOCKET INITIALIZATION ---
+        function initKdsWebSockets() {
+            try {
+                if (typeof Pusher === 'undefined') return;
+// 🚀 Enable logging so you can see live WebSocket events in F12 Console
+                Pusher.logToConsole = true;
+                const reverbKey = "{{ config('broadcasting.connections.reverb.key') ?? env('REVERB_APP_KEY') }}";
+                if (!reverbKey) return;
 
-            const pusher = new Pusher(reverbKey, {
-                wsHost: reverbHost,
-                wsPort: reverbPort,
-                wssPort: reverbPort,
-                forceTLS: reverbScheme === 'https',
-                disableStats: true,
-                enabledTransports: ['ws', 'wss']
-            });
+                const reverbHost = window.location.hostname;
 
-            const channel = pusher.subscribe('kds-channel');
+                const reverbPort = {{ config('broadcasting.connections.reverb.options.port') ?? env('REVERB_PORT', 8080) }};
+                const reverbScheme =
+                    "{{ config('broadcasting.connections.reverb.options.scheme') ?? env('REVERB_SCHEME', 'http') }}";
 
-            function handleLiveEvent(data) {
-                if (data && data.message === 'new_orders_synced') playKitchenAlert();
-                fetchChefOrders();
+                const pusher = new Pusher(reverbKey, {
+                    wsHost: reverbHost,
+                    wsPort: reverbPort,
+                    wssPort: reverbPort,
+                    forceTLS: false,
+                    disableStats: true,
+                    enabledTransports: ['ws', 'wss'],
+                    cluster: 'mt1',
+                });
+
+                const channel = pusher.subscribe('kds-channel');
+                const onLiveEvent = (data) => {
+                console.log('⚡ [WebSocket] Live event received:', data);
+
+                    if (data && data.message === 'new_orders_synced') playKitchenAlert();
+                    fetchChefOrders();
+                };
+
+                channel.bind('order-event', onLiveEvent);
+                channel.bind('.order-event', onLiveEvent);
+
+                pusher.connection.bind('state_change', function(states) {
+                    if (wsDot && wsText) {
+                        if (states.current === 'connected') {
+                            wsDot.style.backgroundColor = 'var(--success)';
+                            wsText.textContent = 'Connected';
+                        } else {
+                            wsDot.style.backgroundColor = 'var(--destructive)';
+                            wsText.textContent = 'Reconnecting';
+                        }
+                    }
+                });
+            } catch (err) {
+                console.warn('[KDS WebSocket] Init warning:', err);
             }
-
-            channel.bind('order-event', handleLiveEvent);
-            channel.bind('.order-event', handleLiveEvent);
-
-            pusher.connection.bind('state_change', function(states) {
-                if (states.current === 'connected') {
-                    wsDot.style.backgroundColor = 'var(--success)';
-                    wsText.textContent = 'Connected';
-                } else {
-                    wsDot.style.backgroundColor = 'var(--destructive)';
-                    wsText.textContent = 'Live Reconnecting';
-                }
-            });
-        } catch (e) {
-            console.warn('[KDS WebSocket] Reverb error, relying on auto-poll:', e);
         }
 
-        // 🚀 IMMEDIATE INVOCATION (FIXES BLANK ON LOAD)
-        fetchChefOrders();
+        initKdsWebSockets();
         setInterval(updateAllClocks, 1000);
-
-        // 🚀 REAL-TIME AUTO-POLL FALLBACK (POLLS EVERY 6 SECONDS SO IT NEVER MISSES TICKETS)
-        setInterval(fetchChefOrders, 6000);
     </script>
+
 </body>
 
 </html>

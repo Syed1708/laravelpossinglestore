@@ -20,10 +20,8 @@ class KdsOrderUpdated implements ShouldBroadcastNow
     public function __construct(string $message = 'update', ?Order $order = null)
     {
         $this->message = $message;
-
-        // Eager-load items, category relations, and customer info in WebSocket payload
-        $this->order = $order ? $order->loadMissing(['items.product.category', 'client']) : null;
-        $this->status = $order ? ($order->preparation_status ?? $order->status) : null;
+        $this->order   = $order;
+        $this->status  = $order ? ($order->preparation_status ?? $order->status) : null;
     }
 
     /**
@@ -46,10 +44,29 @@ class KdsOrderUpdated implements ShouldBroadcastNow
     }
 
     /**
-     * Broadcast event name (Listening as '.order-event' on Next.js Laravel Echo)
+     * Broadcast event name (Listening as 'order-event' in Pusher / '.order-event' in Echo)
      */
     public function broadcastAs(): string
     {
         return 'order-event';
+    }
+
+    /**
+     * 🚀 CRITICAL FIX: Send a clean, lightweight payload (<300 bytes)
+     * Prevents exceeding Reverb's 10KB max_message_size limit.
+     *
+     * @return array<string, mixed>
+     */
+    public function broadcastWith(): array
+    {
+        return [
+            'message'            => $this->message,
+            'status'             => $this->status,
+            'order_id'           => $this->order?->id,
+            'sequence_number'    => $this->order?->sequence_number,
+            'preparation_status' => $this->order?->preparation_status,
+            'order_type'         => $this->order?->order_type,
+            'customer_name'      => $this->order?->customer_name,
+        ];
     }
 }
