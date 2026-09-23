@@ -198,10 +198,10 @@
         <a href="{{ route('admin.reservations.floor_plan') }}" class="btn btn-secondary" style="text-decoration: none;">
             🗺️ Table Floor Plan &amp; Hostess
         </a>
-        <a href="{{ route('admin.kds.chef') }}" target="_blank" class="btn btn-ghost" style="text-decoration: none;">
+        <a href="{{ route('admin.kds.chef') }}" target="_blank"class="btn btn-secondary" style="text-decoration: none;">
             👨‍🍳 Chef KDS
         </a>
-        <a href="{{ route('admin.kds.packer') }}" target="_blank" class="btn btn-ghost" style="text-decoration: none;">
+        <a href="{{ route('admin.kds.packer') }}" target="_blank" class="btn btn-secondary" style="text-decoration: none;">
             📦 Packer KDS
         </a>
     </div>

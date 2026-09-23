@@ -28,7 +28,7 @@ class ReportController extends Controller
         $isAdmin = $user && ($user->hasRole('super-admin') || $user->hasRole('admin'));
 
         $settings = StoreSetting::getSettings();
-        $currencySymbol = $settings->currency === 'GBP' ? '£' : '€';
+        $currencySymbol = StoreSetting::currencySymbol(); // 🚀 Supports EUR, GBP, BDT (৳)
 
         return view('admin.reports.index', array_merge($data, [
             'startDate'      => $startDate->format('Y-m-d'),
@@ -49,7 +49,7 @@ class ReportController extends Controller
         $data = $this->calculateReportData($startDate, $endDate);
 
         $settings = StoreSetting::getSettings();
-        $currencySymbol = $settings->currency === 'GBP' ? '£' : '€';
+        $currencySymbol = StoreSetting::currencySymbol(); // 🚀 Supports EUR, GBP, BDT (৳)
 
         $pdf = Pdf::loadView('admin.reports.pdf', array_merge($data, [
             'startDate'      => $startDate->format('d/m/Y'),
@@ -65,17 +65,17 @@ class ReportController extends Controller
     }
 
     /**
-     * 🚀 TIMEZONE SAFE DATE PARSER: Standardizes Europe/Paris date bounds
+     * 🚀 TIMEZONE SAFE DATE PARSER: Resolves active store timezone dynamically (FR, UK, BD)
      *
      * @return array{0: Carbon, 1: Carbon}
      */
     private function parseDateRange(Request $request): array
     {
-        $timezone = 'Europe/Paris';
+        $timezone = StoreSetting::timezone();
 
         $startDate = $request->filled('start_date')
             ? Carbon::parse($request->input('start_date'), $timezone)->startOfDay()
-            : Carbon::now($timezone)->startOfMonth();
+            : Carbon::now($timezone)->startOfMonth()->startOfDay();
 
         $endDate = $request->filled('end_date')
             ? Carbon::parse($request->input('end_date'), $timezone)->endOfDay()
@@ -91,10 +91,22 @@ class ReportController extends Controller
      */
     private function calculateReportData(Carbon $startDate, Carbon $endDate): array
     {
-        // 1. HT/TVA/TTC Totals (🚀 Strictly excludes cancelled orders)
-        $totals = Order::whereBetween('completed_at', [$startDate, $endDate])
-            ->whereNotIn('status', ['cancelled'])
-            ->where('preparation_status', '!=', 'cancelled')
+        // 🚀 Convert local store boundaries to exact UTC bounds for database querying
+        $startUtc = $startDate->copy()->setTimezone('UTC');
+        $endUtc   = $endDate->copy()->setTimezone('UTC');
+
+        // Common order date selector (falls back to created_at if completed_at is null)
+        $dateColumn = DB::raw('COALESCE(orders.completed_at, orders.created_at)');
+
+        // 1. HT/TVA/TTC Totals (SQL NULL safe, excludes cancelled orders & negative Avoirs)
+        $totals = Order::whereBetween(DB::raw('COALESCE(completed_at, created_at)'), [$startUtc, $endUtc])
+            ->where(function ($q) {
+                $q->whereNull('status')->orWhere('status', '!=', 'cancelled');
+            })
+            ->where(function ($q) {
+                $q->whereNull('preparation_status')->orWhere('preparation_status', '!=', 'cancelled');
+            })
+            ->where('order_type', '!=', 'refund')
             ->selectRaw('
                 COALESCE(SUM(total_incl_vat), 0) as total_ttc,
                 COALESCE(SUM(subtotal_excl_vat), 0) as total_ht,
@@ -103,22 +115,32 @@ class ReportController extends Controller
             ')
             ->first();
 
-        // 2. Payment Methods Breakdown (Excludes cancelled orders)
+        // 2. Payment Methods Breakdown
         $payments = DB::table('payments')
             ->join('orders', 'payments.order_id', '=', 'orders.id')
-            ->whereBetween('orders.completed_at', [$startDate, $endDate])
-            ->whereNotIn('orders.status', ['cancelled'])
-            ->where('orders.preparation_status', '!=', 'cancelled')
+            ->whereBetween($dateColumn, [$startUtc, $endUtc])
+            ->where(function ($q) {
+                $q->whereNull('orders.status')->orWhere('orders.status', '!=', 'cancelled');
+            })
+            ->where(function ($q) {
+                $q->whereNull('orders.preparation_status')->orWhere('orders.preparation_status', '!=', 'cancelled');
+            })
+            ->where('orders.order_type', '!=', 'refund')
             ->select('payments.method', DB::raw('SUM(payments.amount) as total'))
             ->groupBy('payments.method')
             ->get();
 
-        // 3. VAT Breakdown per French tax bracket (5.5%, 10%, 20%)
+        // 3. VAT Breakdown per tax bracket (5.5%, 10%, 20%)
         $vatBreakdown = DB::table('order_items')
             ->join('orders', 'order_items.order_id', '=', 'orders.id')
-            ->whereBetween('orders.completed_at', [$startDate, $endDate])
-            ->whereNotIn('orders.status', ['cancelled'])
-            ->where('orders.preparation_status', '!=', 'cancelled')
+            ->whereBetween($dateColumn, [$startUtc, $endUtc])
+            ->where(function ($q) {
+                $q->whereNull('orders.status')->orWhere('orders.status', '!=', 'cancelled');
+            })
+            ->where(function ($q) {
+                $q->whereNull('orders.preparation_status')->orWhere('orders.preparation_status', '!=', 'cancelled');
+            })
+            ->where('orders.order_type', '!=', 'refund')
             ->select(
                 'order_items.vat_rate',
                 DB::raw('SUM(order_items.subtotal) as total_ttc'),
@@ -131,9 +153,14 @@ class ReportController extends Controller
         // 4. Top-Selling Products (Volume & Revenue analysis - Top 15)
         $topProducts = DB::table('order_items')
             ->join('orders', 'order_items.order_id', '=', 'orders.id')
-            ->whereBetween('orders.completed_at', [$startDate, $endDate])
-            ->whereNotIn('orders.status', ['cancelled'])
-            ->where('orders.preparation_status', '!=', 'cancelled')
+            ->whereBetween($dateColumn, [$startUtc, $endUtc])
+            ->where(function ($q) {
+                $q->whereNull('orders.status')->orWhere('orders.status', '!=', 'cancelled');
+            })
+            ->where(function ($q) {
+                $q->whereNull('orders.preparation_status')->orWhere('orders.preparation_status', '!=', 'cancelled');
+            })
+            ->where('orders.order_type', '!=', 'refund')
             ->select(
                 'order_items.product_name',
                 DB::raw('SUM(order_items.quantity) as qty_sold'),
@@ -147,19 +174,19 @@ class ReportController extends Controller
         // 5. Received Purchase Orders (Supplier Deliveries)
         $purchasesList = PurchaseOrder::with(['supplier', 'items.ingredient'])
             ->where('status', 'received')
-            ->whereBetween('received_at', [$startDate, $endDate])
+            ->whereBetween('received_at', [$startUtc, $endUtc])
             ->orderBy('received_at', 'desc')
             ->get();
 
         $totalPurchasesCost = (float) $purchasesList->sum('total_cost');
 
-        // 6. Operating Expenses (🚀 Filtered by paid_at date matching P&L)
+        // 6. Operating Expenses
         $expensesList = Expense::where('category', '!=', 'food_cost')
-            ->where(function ($query) use ($startDate, $endDate) {
-                $query->whereBetween('paid_at', [$startDate, $endDate])
-                    ->orWhere(function ($sub) use ($startDate, $endDate) {
+            ->where(function ($query) use ($startUtc, $endUtc) {
+                $query->whereBetween('paid_at', [$startUtc, $endUtc])
+                    ->orWhere(function ($sub) use ($startUtc, $endUtc) {
                         $sub->whereNull('paid_at')
-                            ->whereBetween('created_at', [$startDate, $endDate]);
+                            ->whereBetween('created_at', [$startUtc, $endUtc]);
                     });
             })
             ->with('expenseCategory')

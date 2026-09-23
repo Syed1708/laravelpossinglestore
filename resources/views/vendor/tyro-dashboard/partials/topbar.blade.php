@@ -26,7 +26,7 @@
         </button>
 
         <!-- 🚀 HIGH-VISIBILITY DYNAMIC i18n SWITCHER (Active highlighted with corporate blue) -->
-        <div
+        {{-- <div
             style="display: flex; gap: 8px; align-items: center; margin-right: 20px; font-family: 'Inter', sans-serif;">
             <!-- English Toggle -->
             <a href="{{ route('lang.switch', 'en') }}"
@@ -45,7 +45,7 @@
                 onmouseout="this.style.color='{{ app()->getLocale() === 'fr' ? 'var(--primary, #3182ce)' : 'var(--muted-foreground, #718096)' }}'">
                 FR
             </a>
-        </div>
+        </div> --}}
         <!-- User Dropdown -->
         <div class="user-dropdown" id="userDropdown">
             <button type="button" class="user-dropdown-btn" onclick="toggleUserDropdown()">
