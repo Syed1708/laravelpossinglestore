@@ -19,6 +19,7 @@ use App\Http\Controllers\Admin\AdminSettingsController;
 use App\Http\Controllers\Api\v1\catalog\ReservationApiController;
 use App\Http\Controllers\Api\v1\kds\KdsApiController;
 use App\Http\Controllers\ReservationController;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 /*
 |--------------------------------------------------------------------------
@@ -29,6 +30,17 @@ use App\Http\Controllers\ReservationController;
 Route::get('/', function () {
     return view('welcome');
 });
+
+
+
+// 🚀 Generate Software Protection & Licensing Blueprint PDF
+Route::get('/admin/docs/license-pdf', function () {
+    $pdf = Pdf::loadView('admin.docs.license_pdf')
+        ->setPaper('a4', 'portrait')
+        ->setOption(['isHtml5ParserEnabled' => true, 'isRemoteEnabled' => true]);
+
+    return $pdf->download('Software-Protection-Blueprint.pdf');
+})->name('admin.docs.license_pdf');
 
 // Dynamic Language Switcher Route
 Route::get('/lang/{locale}', function ($locale) {
