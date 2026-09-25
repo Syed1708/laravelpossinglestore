@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Helpers;
+namespace App\helpers;
 
 use App\Models\StoreSetting;
 use Carbon\Carbon;

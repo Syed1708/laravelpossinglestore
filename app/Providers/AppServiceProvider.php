@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\StoreSetting;
 use App\Models\Table;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -25,6 +26,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+                // 🚀 2. Fix MySQL 1071 key length error for Namecheap/cPanel MySQL
+        Schema::defaultStringLength(100);
         // 🚀 Auto-clear Redis cache when admin edits products, categories, or settings
         Product::saved(fn () => Cache::forget('public_menu_v1'));
         Product::deleted(fn () => Cache::forget('public_menu_v1'));

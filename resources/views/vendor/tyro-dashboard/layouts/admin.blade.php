@@ -9,8 +9,10 @@
 
     <title>@yield('title', 'Admin Dashboard') - {{ $branding['app_name'] ?? config('app.name', 'Laravel') }}</title>
     <!-- 🚀 ADD FAVICON TAGS HERE -->
-    <link rel="icon" type="image/svg+xml" href="{{ asset(config('tyro-dashboard.branding.favicon', '/favicon.svg')) }}?v=2.0">
-    <link rel="shortcut icon" href="{{ asset('/favicon.ico') }}">
+    <link rel="icon" type="image/svg+xml"
+        href="{{ asset(config('tyro-dashboard.branding.favicon') ?: 'favicon.svg') }}?v=3.0">
+
+    <link rel="alternate icon" href="{{ asset('favicon.ico') }}?v=3.0">
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700&display=swap" rel="stylesheet" />
